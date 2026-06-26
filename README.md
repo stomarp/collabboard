@@ -211,7 +211,7 @@ Example WebSocket event:
 ### Phase 1 — Project Setup
 
 - [x] PR #1: Initialize monorepo with backend and frontend setup
-- [ ] PR #2: FastAPI app skeleton with health check setup
+- [x] PR #2: FastAPI app skeleton with health check setup
 - [ ] PR #3: Next.js frontend scaffold setup
 
 ### Phase 2 — Auth & Database
@@ -279,3 +279,34 @@ CollabBoard is intended to show real engineering skills beyond AI wrappers:
 **CollabBoard — Real-Time Collaborative Workspace Platform**  
 Built a multi-user task management platform with FastAPI, WebSockets, Redis pub/sub, PostgreSQL, and Next.js, supporting live task movement, online presence, role-based board access, activity logs, and production-style Dockerized development.
 
+## Backend API
+
+The backend service is a FastAPI application.
+
+Local API:
+
+```text
+http://localhost:8000
+```
+
+Health check:
+
+```text
+GET /health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "service": "CollabBoard API",
+  "environment": "development"
+}
+```
+
+FastAPI docs:
+
+```text
+http://localhost:8000/docs
+```
