@@ -217,7 +217,7 @@ Example WebSocket event:
 ### Phase 2 — Auth & Database
 
 - [x] PR #4: SQLAlchemy models + Alembic migrations backend
-- [ ] PR #5: JWT register + login endpoints backend
+- [x] PR #5: JWT register + login endpoints backend
 - [ ] PR #6: Auth UI — login and register pages frontend
 
 ### Phase 3 — Core Board Features
@@ -243,40 +243,45 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #4 — SQLAlchemy Models and Alembic Migrations
+### PR #5 — JWT Auth Endpoints
 
-This PR adds the backend database foundation for CollabBoard.
+This PR adds backend authentication for CollabBoard.
 
 This PR includes:
 
-- SQLAlchemy database session setup
-- Core SQLAlchemy models
-- Alembic configuration
-- Initial PostgreSQL migration
-- UUID primary keys with PostgreSQL `pgcrypto`
-- Workspace, board, task, comment, membership, and activity log tables
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /auth/me`
+- bcrypt password hashing
+- JWT access token generation
+- Bearer token authentication dependency
+- Pydantic auth schemas
 
-This PR intentionally does not include authentication endpoints, board CRUD APIs, frontend UI, or WebSocket logic. Those will be added in later PRs.
+This PR intentionally does not include frontend auth UI, board CRUD APIs, or WebSocket logic. Those will be added in later PRs.
 
-## Database Migrations
+## Auth API
 
-Run migrations inside the backend container:
+Register a user:
 
 ```bash
-cd backend
-alembic upgrade head
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"swati@example.com\",\"password\":\"Password123\",\"full_name\":\"Swati\"}"
 ```
 
-Or through Docker Compose:
+Login:
 
 ```bash
-docker compose exec backend alembic upgrade head
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"swati@example.com\",\"password\":\"Password123\"}"
 ```
 
-Check current migration:
+Get current user:
 
 ```bash
-docker compose exec backend alembic current
+curl http://localhost:8000/auth/me \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
 ## Resume Positioning
