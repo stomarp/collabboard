@@ -212,7 +212,7 @@ Example WebSocket event:
 
 - [x] PR #1: Initialize monorepo with backend and frontend setup
 - [x] PR #2: FastAPI app skeleton with health check setup
-- [ ] PR #3: Next.js frontend scaffold setup
+- [x] PR #3: Next.js frontend scaffold setup
 
 ### Phase 2 — Auth & Database
 
@@ -243,21 +243,20 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #1 — Initialize CollabBoard Monorepo
+### PR #3 — Next.js Frontend Scaffold
 
 This PR adds:
 
-- Root monorepo structure
-- `backend/` directory placeholder
-- `frontend/` directory placeholder
-- `.gitignore`
-- `.env.example`
-- `docker-compose.yml`
-- PostgreSQL service
-- Redis service
-- README project skeleton
+- Next.js frontend application scaffold
+- TypeScript, Tailwind CSS, ESLint, and App Router setup
+- CollabBoard landing page
+- Placeholder dashboard route
+- Frontend `.env.example`
+- Frontend Dockerfile and Docker ignore file
+- Frontend service in Docker Compose
+- Frontend setup documentation
 
-This PR intentionally does not include FastAPI or Next.js application code. Those will be added in PR #2 and PR #3.
+This PR intentionally does not include authentication UI, board CRUD UI, drag-and-drop, or WebSocket logic. Those will be added in later PRs.
 
 ## Resume Positioning
 
@@ -309,4 +308,36 @@ FastAPI docs:
 
 ```text
 http://localhost:8000/docs
+```
+
+
+## Frontend App
+
+The frontend service is a Next.js application using TypeScript, Tailwind CSS, ESLint, and the App Router.
+
+Local frontend URL:
+
+```text
+http://localhost:3000
+```
+
+Frontend environment example:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=CollabBoard
+```
+
+Run frontend locally:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Build frontend:
+
+```bash
+cd frontend
+npm run build
 ```
