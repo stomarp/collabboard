@@ -216,7 +216,7 @@ Example WebSocket event:
 
 ### Phase 2 — Auth & Database
 
-- [ ] PR #4: SQLAlchemy models + Alembic migrations backend
+- [x] PR #4: SQLAlchemy models + Alembic migrations backend
 - [ ] PR #5: JWT register + login endpoints backend
 - [ ] PR #6: Auth UI — login and register pages frontend
 
@@ -243,20 +243,41 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #3 — Next.js Frontend Scaffold
+### PR #4 — SQLAlchemy Models and Alembic Migrations
 
-This PR adds:
+This PR adds the backend database foundation for CollabBoard.
 
-- Next.js frontend application scaffold
-- TypeScript, Tailwind CSS, ESLint, and App Router setup
-- CollabBoard landing page
-- Placeholder dashboard route
-- Frontend `.env.example`
-- Frontend Dockerfile and Docker ignore file
-- Frontend service in Docker Compose
-- Frontend setup documentation
+This PR includes:
 
-This PR intentionally does not include authentication UI, board CRUD UI, drag-and-drop, or WebSocket logic. Those will be added in later PRs.
+- SQLAlchemy database session setup
+- Core SQLAlchemy models
+- Alembic configuration
+- Initial PostgreSQL migration
+- UUID primary keys with PostgreSQL `pgcrypto`
+- Workspace, board, task, comment, membership, and activity log tables
+
+This PR intentionally does not include authentication endpoints, board CRUD APIs, frontend UI, or WebSocket logic. Those will be added in later PRs.
+
+## Database Migrations
+
+Run migrations inside the backend container:
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+Or through Docker Compose:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+Check current migration:
+
+```bash
+docker compose exec backend alembic current
+```
 
 ## Resume Positioning
 

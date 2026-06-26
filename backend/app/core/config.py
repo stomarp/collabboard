@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     frontend_url: str = "http://localhost:3000"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    database_url: str = "postgresql+psycopg://collabboard:collabboard@postgres:5432/collabboard_dev"
+    redis_url: str = "redis://redis:6379/0"
 
     model_config = SettingsConfigDict(
         env_file=".env",
