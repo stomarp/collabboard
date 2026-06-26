@@ -42,6 +42,8 @@ services:
       APP_ENV: development
       FRONTEND_URL: http://localhost:3000
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      DATABASE_URL: postgresql+psycopg://collabboard:collabboard@postgres:5432/collabboard_dev
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     volumes:
