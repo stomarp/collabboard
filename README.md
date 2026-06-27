@@ -223,7 +223,7 @@ Example WebSocket event:
 ### Phase 3 — Core Board Features
 
 - [x] PR #7: Board CRUD REST API backend
-- [ ] PR #8: Task and column CRUD API backend
+- [x] PR #8: Task and column CRUD API backend
 - [ ] PR #9: Dashboard UI — board list + create board frontend
 - [ ] PR #10: Static Kanban board UI frontend
 
@@ -243,62 +243,51 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #7 - Board CRUD REST API
+### PR #8 - Column and Task CRUD API
 
-This PR adds the first protected product API for CollabBoard.
+This PR adds the Kanban domain layer for CollabBoard.
 
 This PR includes:
 
-- `GET /boards`
-- `POST /boards`
-- `GET /boards/{board_id}`
-- `PATCH /boards/{board_id}`
-- `DELETE /boards/{board_id}`
-- Protected board routes using JWT auth
-- Automatic personal workspace creation for first board
-- Board ownership through `board_members`
-- Role checks for update and delete actions
+- `GET /boards/{board_id}/columns`
+- `POST /boards/{board_id}/columns`
+- `PATCH /columns/{column_id}`
+- `DELETE /columns/{column_id}`
+- `GET /boards/{board_id}/tasks`
+- `POST /boards/{board_id}/tasks`
+- `GET /tasks/{task_id}`
+- `PATCH /tasks/{task_id}`
+- `DELETE /tasks/{task_id}`
+- Position assignment for new columns and tasks
+- Assignee validation against board membership
+- JWT-protected access checks through board roles
 
-This PR intentionally does not include columns, tasks, frontend board UI, drag-and-drop, or WebSocket logic. Those will be added in later PRs.
+This PR intentionally does not include drag-and-drop reordering, WebSocket sync, frontend board UI, comments, or activity logs. Those will be added in later PRs.
 
-## Board API
+## Column and Task API
 
-Create a board:
+Create a column:
 
 ```bash
-curl -X POST http://localhost:8000/boards \\
+curl -X POST http://localhost:8000/boards/<BOARD_ID>/columns \\
   -H "Authorization: Bearer <ACCESS_TOKEN>" \\
   -H "Content-Type: application/json" \\
-  -d "{\"name\":\"Sprint Planning\",\"description\":\"Team sprint board\"}"
+  -d "{\"name\":\"Todo\"}"
 ```
 
-List boards:
+Create a task:
 
 ```bash
-curl http://localhost:8000/boards \\
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-Get a board:
-
-```bash
-curl http://localhost:8000/boards/<BOARD_ID> \\
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-Update a board:
-
-```bash
-curl -X PATCH http://localhost:8000/boards/<BOARD_ID> \\
+curl -X POST http://localhost:8000/boards/<BOARD_ID>/tasks \\
   -H "Authorization: Bearer <ACCESS_TOKEN>" \\
   -H "Content-Type: application/json" \\
-  -d "{\"name\":\"Updated Sprint Board\"}"
+  -d "{\"column_id\":\"<COLUMN_ID>\",\"title\":\"Design WebSocket event format\",\"priority\":\"high\"}"
 ```
 
-Delete a board:
+List board tasks:
 
 ```bash
-curl -X DELETE http://localhost:8000/boards/<BOARD_ID> \\
+curl http://localhost:8000/boards/<BOARD_ID>/tasks \\
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
