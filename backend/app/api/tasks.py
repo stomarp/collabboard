@@ -1,0 +1,99 @@
+import uuid
+
+from fastapi import APIRouter, Depends, Response, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.db import get_db
+from app.dependencies import get_current_user
+from app.models import Task, User
+from app.schemas.tasks import TaskCreate, TaskRead, TaskUpdate
+from app.services.boards import require_board_role
+from app.services.columns_tasks import EDITOR_ROLES, VIEWER_ROLES, get_board_column_or_404, get_next_task_position, get_task_for_user, validate_assignee_is_board_member
+
+router = APIRouter(tags=["tasks"])
+
+
+@router.get("/boards/{board_id}/tasks", response_model=list[TaskRead])
+def list_tasks(
+    board_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[Task]:
+    require_board_role(db, board_id, current_user, VIEWER_ROLES)
+    return list(
+        db.scalars(
+            select(Task)
+            .where(Task.board_id == board_id)
+            .order_by(Task.column_id.asc(), Task.position.asc())
+        )
+    )
+
+
+@router.post("/boards/{board_id}/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
+def create_task(
+    board_id: uuid.UUID,
+    payload: TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Task:
+    require_board_role(db, board_id, current_user, EDITOR_ROLES)
+    column = get_board_column_or_404(db, board_id, payload.column_id)
+    validate_assignee_is_board_member(db, board_id, payload.assignee_id)
+
+    task = Task(
+        board_id=board_id,
+        column_id=column.id,
+        title=payload.title,
+        description=payload.description,
+        priority=payload.priority,
+        assignee_id=payload.assignee_id,
+        created_by_id=current_user.id,
+        position=get_next_task_position(db, column.id),
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.get("/tasks/{task_id}", response_model=TaskRead)
+def get_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Task:
+    return get_task_for_user(db, task_id, current_user, VIEWER_ROLES)
+
+
+@router.patch("/tasks/{task_id}", response_model=TaskRead)
+def update_task(
+    task_id: uuid.UUID,
+    payload: TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Task:
+    task = get_task_for_user(db, task_id, current_user, EDITOR_ROLES)
+    update_data = payload.model_dump(exclude_unset=True)
+
+    if "assignee_id" in update_data:
+        validate_assignee_is_board_member(db, task.board_id, update_data["assignee_id"])
+
+    for key, value in update_data.items():
+        setattr(task, key, value)
+
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    task = get_task_for_user(db, task_id, current_user, EDITOR_ROLES)
+    db.delete(task)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

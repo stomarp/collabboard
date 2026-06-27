@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.boards import router as boards_router
+from app.api.columns import router as columns_router
+from app.api.tasks import router as tasks_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -13,6 +15,8 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(boards_router)
+app.include_router(columns_router)
+app.include_router(tasks_router)
 
 app.add_middleware(
     CORSMiddleware,
