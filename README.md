@@ -222,7 +222,7 @@ Example WebSocket event:
 
 ### Phase 3 — Core Board Features
 
-- [ ] PR #7: Board CRUD REST API backend
+- [x] PR #7: Board CRUD REST API backend
 - [ ] PR #8: Task and column CRUD API backend
 - [ ] PR #9: Dashboard UI — board list + create board frontend
 - [ ] PR #10: Static Kanban board UI frontend
@@ -243,44 +243,62 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #5 — JWT Auth Endpoints
+### PR #7 - Board CRUD REST API
 
-This PR adds backend authentication for CollabBoard.
+This PR adds the first protected product API for CollabBoard.
 
 This PR includes:
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `GET /auth/me`
-- bcrypt password hashing
-- JWT access token generation
-- Bearer token authentication dependency
-- Pydantic auth schemas
+- `GET /boards`
+- `POST /boards`
+- `GET /boards/{board_id}`
+- `PATCH /boards/{board_id}`
+- `DELETE /boards/{board_id}`
+- Protected board routes using JWT auth
+- Automatic personal workspace creation for first board
+- Board ownership through `board_members`
+- Role checks for update and delete actions
 
-This PR intentionally does not include frontend auth UI, board CRUD APIs, or WebSocket logic. Those will be added in later PRs.
+This PR intentionally does not include columns, tasks, frontend board UI, drag-and-drop, or WebSocket logic. Those will be added in later PRs.
 
-## Auth API
+## Board API
 
-Register a user:
+Create a board:
 
 ```bash
-curl -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"swati@example.com\",\"password\":\"Password123\",\"full_name\":\"Swati\"}"
+curl -X POST http://localhost:8000/boards \\
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \\
+  -H "Content-Type: application/json" \\
+  -d "{\"name\":\"Sprint Planning\",\"description\":\"Team sprint board\"}"
 ```
 
-Login:
+List boards:
 
 ```bash
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"swati@example.com\",\"password\":\"Password123\"}"
+curl http://localhost:8000/boards \\
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
-Get current user:
+Get a board:
 
 ```bash
-curl http://localhost:8000/auth/me \
+curl http://localhost:8000/boards/<BOARD_ID> \\
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+Update a board:
+
+```bash
+curl -X PATCH http://localhost:8000/boards/<BOARD_ID> \\
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \\
+  -H "Content-Type: application/json" \\
+  -d "{\"name\":\"Updated Sprint Board\"}"
+```
+
+Delete a board:
+
+```bash
+curl -X DELETE http://localhost:8000/boards/<BOARD_ID> \\
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
