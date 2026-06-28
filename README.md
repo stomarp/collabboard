@@ -30,7 +30,7 @@ The goal is to build a portfolio-quality project that shows backend depth, real-
 - Pydantic
 - Redis
 - WebSockets
-- JWT Authentication
+- JWT authentication
 - Pytest
 
 ### Frontend
@@ -85,7 +85,7 @@ Stop services:
 docker compose down
 ```
 
-Remove volumes if you want a clean database:
+Remove volumes only when you intentionally want a clean database:
 
 ```bash
 docker compose down -v
@@ -95,6 +95,8 @@ docker compose down -v
 
 | Service | Host URL |
 |---|---|
+| Backend API | http://localhost:8000 |
+| Frontend | http://localhost:3000 |
 | PostgreSQL | localhost:55432 |
 | Redis | localhost:6379 |
 
@@ -102,214 +104,38 @@ PostgreSQL uses host port `55432` to avoid conflicts with other local PostgreSQL
 
 ## Environment Variables
 
-Copy `.env.example` when local app code is added:
-
-```bash
-cp .env.example .env
-```
-
-Current local database URL:
+Backend Docker Compose currently provides local values for:
 
 ```env
-DATABASE_URL=postgresql+psycopg://collabboard:collabboard@localhost:55432/collabboard_dev
+DATABASE_URL=postgresql+psycopg://collabboard:collabboard@postgres:5432/collabboard_dev
+REDIS_URL=redis://redis:6379/0
+JWT_SECRET_KEY=change-me-in-development
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
-Current Redis URL:
+Frontend local environment example:
 
 ```env
-REDIS_URL=redis://localhost:6379/0
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=CollabBoard
 ```
 
-## Testing Infrastructure
+## Quality Checks
 
-Test Redis:
+Run the PR readiness check before committing feature work:
 
 ```bash
-docker exec -it collabboard-redis redis-cli ping
+bash scripts/check_pr_ready.sh
 ```
 
-Expected response:
+The check cleans text files, verifies whitespace, builds Docker services, waits for backend health, and applies Alembic migrations.
+
+Expected final output:
 
 ```text
-PONG
+PR readiness checks passed.
 ```
-
-Test PostgreSQL:
-
-```bash
-docker exec -it collabboard-postgres psql -U collabboard -d collabboard_dev -c "SELECT version();"
-```
-
-## Project Structure
-
-```text
-collabboard/
-├── backend/
-├── frontend/
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-└── README.md
-```
-
-## Architecture Preview
-
-```text
-Frontend: Next.js + TypeScript
-        |
-        | REST APIs for CRUD
-        | WebSockets for live board updates
-        v
-Backend: FastAPI
-        |
-        | Persistent data
-        v
-PostgreSQL
-        |
-        | Real-time events, presence, pub/sub
-        v
-Redis
-```
-
-## Real-Time Update Flow
-
-Example: a user drags a task from `Todo` to `In Progress`.
-
-```text
-User moves task
-        |
-Frontend sends WebSocket event
-        |
-FastAPI validates board access
-        |
-Backend updates PostgreSQL
-        |
-Backend publishes event to Redis
-        |
-Redis broadcasts to board channel
-        |
-Connected users receive update
-        |
-Frontend updates board instantly
-```
-
-Example WebSocket event:
-
-```json
-{
-  "type": "task_moved",
-  "board_id": "board_uuid",
-  "task_id": "task_uuid",
-  "from_column_id": "todo_column_uuid",
-  "to_column_id": "progress_column_uuid",
-  "new_position": 2
-}
-```
-
-## Roadmap
-
-### Phase 1 — Project Setup
-
-- [x] PR #1: Initialize monorepo with backend and frontend setup
-- [x] PR #2: FastAPI app skeleton with health check setup
-- [x] PR #3: Next.js frontend scaffold setup
-
-### Phase 2 — Auth & Database
-
-- [x] PR #4: SQLAlchemy models + Alembic migrations backend
-- [x] PR #5: JWT register + login endpoints backend
-- [ ] PR #6: Auth UI — login and register pages frontend
-
-### Phase 3 — Core Board Features
-
-- [x] PR #7: Board CRUD REST API backend
-- [x] PR #8: Task and column CRUD API backend
-- [ ] PR #9: Dashboard UI — board list + create board frontend
-- [ ] PR #10: Static Kanban board UI frontend
-
-### Phase 4 — Real-Time Collaboration
-
-- [ ] PR #11: WebSocket ConnectionManager + Redis pub/sub
-- [ ] PR #12: task_moved and task_created WebSocket events
-- [ ] PR #13: Drag-and-drop UI with live sync
-- [ ] PR #14: Presence — live cursors and online avatars
-
-### Phase 5 — Polish and Ship
-
-- [ ] PR #15: Activity log + notifications backend
-- [ ] PR #16: Board member invite system backend
-- [ ] PR #17: CI/CD with GitHub Actions
-- [ ] PR #18: Production deploy + README polish
-
-## Current PR
-
-### PR #8 - Column and Task CRUD API
-
-This PR adds the Kanban domain layer for CollabBoard.
-
-This PR includes:
-
-- `GET /boards/{board_id}/columns`
-- `POST /boards/{board_id}/columns`
-- `PATCH /columns/{column_id}`
-- `DELETE /columns/{column_id}`
-- `GET /boards/{board_id}/tasks`
-- `POST /boards/{board_id}/tasks`
-- `GET /tasks/{task_id}`
-- `PATCH /tasks/{task_id}`
-- `DELETE /tasks/{task_id}`
-- Position assignment for new columns and tasks
-- Assignee validation against board membership
-- JWT-protected access checks through board roles
-
-This PR intentionally does not include drag-and-drop reordering, WebSocket sync, frontend board UI, comments, or activity logs. Those will be added in later PRs.
-
-## Column and Task API
-
-Create a column:
-
-```bash
-curl -X POST http://localhost:8000/boards/<BOARD_ID>/columns \\
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \\
-  -H "Content-Type: application/json" \\
-  -d "{\"name\":\"Todo\"}"
-```
-
-Create a task:
-
-```bash
-curl -X POST http://localhost:8000/boards/<BOARD_ID>/tasks \\
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \\
-  -H "Content-Type: application/json" \\
-  -d "{\"column_id\":\"<COLUMN_ID>\",\"title\":\"Design WebSocket event format\",\"priority\":\"high\"}"
-```
-
-List board tasks:
-
-```bash
-curl http://localhost:8000/boards/<BOARD_ID>/tasks \\
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-## Resume Positioning
-
-CollabBoard is intended to show real engineering skills beyond AI wrappers:
-
-- Real-time systems
-- WebSocket architecture
-- Redis pub/sub
-- PostgreSQL schema design
-- Authentication and authorization
-- Multi-user collaboration
-- Scalable backend architecture
-- Full-stack product development
-- Dockerized local development
-- CI/CD and deployment readiness
-
-## Future Resume Bullet
-
-**CollabBoard — Real-Time Collaborative Workspace Platform**  
-Built a multi-user task management platform with FastAPI, WebSockets, Redis pub/sub, PostgreSQL, and Next.js, supporting live task movement, online presence, role-based board access, activity logs, and production-style Dockerized development.
 
 ## Backend API
 
@@ -343,34 +169,166 @@ FastAPI docs:
 http://localhost:8000/docs
 ```
 
+## Implemented APIs
 
-## Frontend App
+### Auth
 
-The frontend service is a Next.js application using TypeScript, Tailwind CSS, ESLint, and the App Router.
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /auth/me`
 
-Local frontend URL:
+### Boards
+
+- `GET /boards`
+- `POST /boards`
+- `GET /boards/{board_id}`
+- `PATCH /boards/{board_id}`
+- `DELETE /boards/{board_id}`
+
+### Columns
+
+- `GET /boards/{board_id}/columns`
+- `POST /boards/{board_id}/columns`
+- `PATCH /columns/{column_id}`
+- `DELETE /columns/{column_id}`
+
+### Tasks
+
+- `GET /boards/{board_id}/tasks`
+- `POST /boards/{board_id}/tasks`
+- `GET /tasks/{task_id}`
+- `PATCH /tasks/{task_id}`
+- `DELETE /tasks/{task_id}`
+
+## Architecture Preview
 
 ```text
-http://localhost:3000
+Frontend: Next.js + TypeScript
+  |
+  | REST APIs for CRUD
+  | WebSockets for live board updates
+  v
+Backend: FastAPI
+  |
+  | Persistent data
+  v
+PostgreSQL
+  |
+  | Real-time events, presence, pub/sub
+  v
+Redis
 ```
 
-Frontend environment example:
+## Real-Time Update Flow
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_APP_NAME=CollabBoard
+Example: a user drags a task from `Todo` to `In Progress`.
+
+```text
+User moves task
+  |
+Frontend sends WebSocket event
+  |
+FastAPI validates board access
+  |
+Backend updates PostgreSQL
+  |
+Backend publishes event to Redis
+  |
+Redis broadcasts to board channel
+  |
+Connected users receive update
+  |
+Frontend updates board instantly
 ```
 
-Run frontend locally:
+Example WebSocket event:
 
-```bash
-cd frontend
-npm run dev
+```json
+{
+  "type": "task_moved",
+  "board_id": "board_uuid",
+  "task_id": "task_uuid",
+  "from_column_id": "todo_column_uuid",
+  "to_column_id": "progress_column_uuid",
+  "new_position": 2
+}
 ```
 
-Build frontend:
+## Roadmap
 
-```bash
-cd frontend
-npm run build
-```
+### Phase 1 - Project Setup
+
+- [x] PR #1: Initialize monorepo with backend and frontend setup
+- [x] PR #2: FastAPI app skeleton with health check setup
+- [x] PR #3: Next.js frontend scaffold setup
+
+### Phase 2 - Auth and Database
+
+- [x] PR #4: SQLAlchemy models and Alembic migrations backend
+- [x] PR #5: JWT register and login endpoints backend
+- [ ] Auth UI: login and register pages frontend
+
+### Phase 3 - Core Board Features
+
+- [x] PR #7: Board CRUD REST API backend
+- [x] PR #8: Task and column CRUD API backend
+- [ ] Activity logs backend
+- [ ] Dashboard UI: board list and create board frontend
+- [ ] Static Kanban board UI frontend
+
+### Phase 4 - Real-Time Collaboration
+
+- [ ] WebSocket ConnectionManager
+- [ ] Redis pub/sub event broadcasting
+- [ ] `task_moved` and `task_created` events
+- [ ] Drag-and-drop UI with live sync
+- [ ] Presence: online avatars and live board viewers
+
+### Phase 5 - Polish and Ship
+
+- [ ] Comments and mentions
+- [ ] Board member invite system
+- [ ] GitHub Actions CI/CD
+- [ ] Production deploy
+- [ ] README screenshots and architecture diagram
+
+## Current PR
+
+### PR #9 - Repository Quality Guardrails
+
+This PR adds repository quality guardrails to keep future CollabBoard pull requests clean and professional.
+
+This PR includes:
+
+- `scripts/clean_text_files.py`
+- `scripts/check_pr_ready.sh`
+- Hidden Unicode and bidirectional character cleanup
+- Line ending normalization
+- Trailing whitespace cleanup
+- `git diff --check`
+- Docker build verification
+- Backend health check verification
+- Alembic migration verification
+
+This PR intentionally does not add product features. It improves engineering hygiene so future feature PRs stay clean.
+
+## Resume Positioning
+
+CollabBoard is intended to show real engineering skills beyond AI wrappers:
+
+- Real-time systems
+- WebSocket architecture
+- Redis pub/sub
+- PostgreSQL schema design
+- Authentication and authorization
+- Multi-user collaboration
+- Scalable backend architecture
+- Full-stack product development
+- Dockerized local development
+- CI/CD and deployment readiness
+
+## Future Resume Bullet
+
+**CollabBoard - Real-Time Collaborative Workspace Platform**
+
+Built a multi-user task management platform with FastAPI, WebSockets, Redis pub/sub, PostgreSQL, and Next.js, supporting live task movement, online presence, role-based board access, activity logs, and production-style Dockerized development.
