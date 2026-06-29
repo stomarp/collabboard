@@ -55,3 +55,12 @@ export async function apiRequest<T>(
 
   return response.json() as Promise<T>;
 }
+export function getWebSocketUrl(path: string, token: string): string {
+  const apiUrl = new URL(API_BASE_URL);
+
+  apiUrl.protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
+  apiUrl.pathname = path;
+  apiUrl.searchParams.set("token", token);
+
+  return apiUrl.toString();
+}
