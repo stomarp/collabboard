@@ -200,6 +200,10 @@ http://localhost:8000/docs
 - `PATCH /tasks/{task_id}`
 - `DELETE /tasks/{task_id}`
 
+### Activity
+
+- `GET /boards/{board_id}/activity`
+
 ## Architecture Preview
 
 ```text
@@ -272,7 +276,7 @@ Example WebSocket event:
 
 - [x] PR #7: Board CRUD REST API backend
 - [x] PR #8: Task and column CRUD API backend
-- [ ] Activity logs backend
+- [x] PR #10: Activity logs backend
 - [ ] Dashboard UI: board list and create board frontend
 - [ ] Static Kanban board UI frontend
 
@@ -294,23 +298,25 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #9 - Repository Quality Guardrails
+## Current PR
 
-This PR adds repository quality guardrails to keep future CollabBoard pull requests clean and professional.
+### PR #10 - Activity Logs Backend
+
+This PR adds durable board activity tracking for CollabBoard.
 
 This PR includes:
 
-- `scripts/clean_text_files.py`
-- `scripts/check_pr_ready.sh`
-- Hidden Unicode and bidirectional character cleanup
-- Line ending normalization
-- Trailing whitespace cleanup
-- `git diff --check`
-- Docker build verification
-- Backend health check verification
-- Alembic migration verification
+- `GET /boards/{board_id}/activity`
+- Activity log response schema
+- Activity log service helper
+- Board activity feed endpoint
+- Activity events for board create and update
+- Activity events for column create, update, and delete
+- Activity events for task create, update, and delete
+- JSON-safe payload conversion for UUID and datetime values
+- JWT-protected board role checks for activity access
 
-This PR intentionally does not add product features. It improves engineering hygiene so future feature PRs stay clean.
+This PR intentionally does not add frontend activity feed UI, WebSocket broadcasting, or Redis pub/sub yet. Those will be added in later PRs.
 
 ## Resume Positioning
 

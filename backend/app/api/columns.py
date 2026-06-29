@@ -8,8 +8,14 @@ from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import BoardColumn, User
 from app.schemas.columns import ColumnCreate, ColumnRead, ColumnUpdate
+from app.services.activity_logs import log_activity
 from app.services.boards import require_board_role
-from app.services.columns_tasks import EDITOR_ROLES, VIEWER_ROLES, get_column_for_user, get_next_column_position
+from app.services.columns_tasks import (
+    EDITOR_ROLES,
+    VIEWER_ROLES,
+    get_column_for_user,
+    get_next_column_position,
+)
 
 router = APIRouter(tags=["columns"])
 
@@ -30,7 +36,11 @@ def list_columns(
     )
 
 
-@router.post("/boards/{board_id}/columns", response_model=ColumnRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/boards/{board_id}/columns",
+    response_model=ColumnRead,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_column(
     board_id: uuid.UUID,
     payload: ColumnCreate,
@@ -45,6 +55,21 @@ def create_column(
         position=get_next_column_position(db, board_id),
     )
     db.add(column)
+    db.flush()
+
+    log_activity(
+        db,
+        board_id=board_id,
+        actor_id=current_user.id,
+        event_type="column.created",
+        entity_type="column",
+        entity_id=column.id,
+        payload={
+            "name": column.name,
+            "position": column.position,
+        },
+    )
+
     db.commit()
     db.refresh(column)
     return column
@@ -58,10 +83,29 @@ def update_column(
     current_user: User = Depends(get_current_user),
 ) -> BoardColumn:
     column = get_column_for_user(db, column_id, current_user, EDITOR_ROLES)
-
     update_data = payload.model_dump(exclude_unset=True)
+
+    previous_values = {
+        key: getattr(column, key)
+        for key in update_data
+    }
+
     for key, value in update_data.items():
         setattr(column, key, value)
+
+    if update_data:
+        log_activity(
+            db,
+            board_id=column.board_id,
+            actor_id=current_user.id,
+            event_type="column.updated",
+            entity_type="column",
+            entity_id=column.id,
+            payload={
+                "before": previous_values,
+                "after": update_data,
+            },
+        )
 
     db.commit()
     db.refresh(column)
@@ -75,6 +119,20 @@ def delete_column(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     column = get_column_for_user(db, column_id, current_user, EDITOR_ROLES)
+
+    log_activity(
+        db,
+        board_id=column.board_id,
+        actor_id=current_user.id,
+        event_type="column.deleted",
+        entity_type="column",
+        entity_id=column.id,
+        payload={
+            "name": column.name,
+            "position": column.position,
+        },
+    )
+
     db.delete(column)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -8,8 +8,16 @@ from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import Task, User
 from app.schemas.tasks import TaskCreate, TaskRead, TaskUpdate
+from app.services.activity_logs import log_activity
 from app.services.boards import require_board_role
-from app.services.columns_tasks import EDITOR_ROLES, VIEWER_ROLES, get_board_column_or_404, get_next_task_position, get_task_for_user, validate_assignee_is_board_member
+from app.services.columns_tasks import (
+    EDITOR_ROLES,
+    VIEWER_ROLES,
+    get_board_column_or_404,
+    get_next_task_position,
+    get_task_for_user,
+    validate_assignee_is_board_member,
+)
 
 router = APIRouter(tags=["tasks"])
 
@@ -30,7 +38,11 @@ def list_tasks(
     )
 
 
-@router.post("/boards/{board_id}/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/boards/{board_id}/tasks",
+    response_model=TaskRead,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_task(
     board_id: uuid.UUID,
     payload: TaskCreate,
@@ -52,6 +64,25 @@ def create_task(
         position=get_next_task_position(db, column.id),
     )
     db.add(task)
+    db.flush()
+
+    log_activity(
+        db,
+        board_id=board_id,
+        actor_id=current_user.id,
+        event_type="task.created",
+        entity_type="task",
+        entity_id=task.id,
+        payload={
+            "title": task.title,
+            "description": task.description,
+            "priority": task.priority,
+            "column_id": task.column_id,
+            "position": task.position,
+            "assignee_id": task.assignee_id,
+        },
+    )
+
     db.commit()
     db.refresh(task)
     return task
@@ -79,8 +110,27 @@ def update_task(
     if "assignee_id" in update_data:
         validate_assignee_is_board_member(db, task.board_id, update_data["assignee_id"])
 
+    previous_values = {
+        key: getattr(task, key)
+        for key in update_data
+    }
+
     for key, value in update_data.items():
         setattr(task, key, value)
+
+    if update_data:
+        log_activity(
+            db,
+            board_id=task.board_id,
+            actor_id=current_user.id,
+            event_type="task.updated",
+            entity_type="task",
+            entity_id=task.id,
+            payload={
+                "before": previous_values,
+                "after": update_data,
+            },
+        )
 
     db.commit()
     db.refresh(task)
@@ -94,6 +144,22 @@ def delete_task(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     task = get_task_for_user(db, task_id, current_user, EDITOR_ROLES)
+
+    log_activity(
+        db,
+        board_id=task.board_id,
+        actor_id=current_user.id,
+        event_type="task.deleted",
+        entity_type="task",
+        entity_id=task.id,
+        payload={
+            "title": task.title,
+            "column_id": task.column_id,
+            "position": task.position,
+            "priority": task.priority,
+        },
+    )
+
     db.delete(task)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
