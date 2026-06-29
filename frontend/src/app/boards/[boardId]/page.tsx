@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { ActivityFeed } from "@/components/boards/ActivityFeed";
+import { PresencePanel } from "@/components/boards/PresencePanel";
 import { ApiError, apiRequest } from "@/lib/api";
 import { clearStoredToken, getStoredToken } from "@/lib/auth";
 
@@ -556,6 +557,8 @@ export default function BoardDetailPage() {
                 {isCreatingTask ? "Creating..." : "Create task"}
               </button>
             </form>
+
+            <PresencePanel boardId={boardId} token={token} />
 
             <ActivityFeed
               boardId={boardId}
