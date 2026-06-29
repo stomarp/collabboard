@@ -204,6 +204,29 @@ http://localhost:8000/docs
 
 - `GET /boards/{board_id}/activity`
 
+## Implemented Frontend
+
+### Public Pages
+
+- `/`
+- `/login`
+- `/register`
+
+### Protected Pages
+
+- `/dashboard`
+
+### Frontend Features
+
+- Login form
+- Registration form
+- JWT token storage
+- Protected dashboard redirect
+- Current user loading through `GET /auth/me`
+- Board list loading through `GET /boards`
+- Create board form through `POST /boards`
+- Logout flow
+
 ## Architecture Preview
 
 ```text
@@ -270,14 +293,14 @@ Example WebSocket event:
 
 - [x] PR #4: SQLAlchemy models and Alembic migrations backend
 - [x] PR #5: JWT register and login endpoints backend
-- [ ] Auth UI: login and register pages frontend
+- [x] PR #11: Auth UI and protected dashboard frontend
 
 ### Phase 3 - Core Board Features
 
 - [x] PR #7: Board CRUD REST API backend
 - [x] PR #8: Task and column CRUD API backend
 - [x] PR #10: Activity logs backend
-- [ ] Dashboard UI: board list and create board frontend
+- [x] PR #11: Dashboard UI with board list and create board frontend
 - [ ] Static Kanban board UI frontend
 
 ### Phase 4 - Real-Time Collaboration
@@ -298,25 +321,28 @@ Example WebSocket event:
 
 ## Current PR
 
-## Current PR
+### PR #11 - Auth UI and Protected Dashboard
 
-### PR #10 - Activity Logs Backend
-
-This PR adds durable board activity tracking for CollabBoard.
+This PR adds the first real frontend product flow for CollabBoard.
 
 This PR includes:
 
-- `GET /boards/{board_id}/activity`
-- Activity log response schema
-- Activity log service helper
-- Board activity feed endpoint
-- Activity events for board create and update
-- Activity events for column create, update, and delete
-- Activity events for task create, update, and delete
-- JSON-safe payload conversion for UUID and datetime values
-- JWT-protected board role checks for activity access
+- `/login`
+- `/register`
+- Protected `/dashboard`
+- Shared API request helper
+- Browser token storage helper
+- Login and registration form component
+- JWT storage after login
+- Redirect to `/login` when dashboard auth is missing or invalid
+- Current user loading through `GET /auth/me`
+- Board list loading through `GET /boards`
+- Create board form through `POST /boards`
+- Logout flow
+- Updated homepage calls-to-action
+- Updated app metadata
 
-This PR intentionally does not add frontend activity feed UI, WebSocket broadcasting, or Redis pub/sub yet. Those will be added in later PRs.
+This PR intentionally does not add the full Kanban board UI, drag-and-drop, WebSockets, Redis pub/sub, or presence yet. Those will be added in later PRs.
 
 ## Resume Positioning
 
