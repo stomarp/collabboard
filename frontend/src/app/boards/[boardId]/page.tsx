@@ -47,6 +47,12 @@ type NewTaskForm = {
   priority: string;
 };
 
+type TaskEditForm = {
+  title: string;
+  description: string;
+  priority: string;
+};
+
 export default function BoardDetailPage() {
   const router = useRouter();
   const params = useParams<{ boardId: string }>();
@@ -68,6 +74,15 @@ export default function BoardDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingColumn, setIsCreatingColumn] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isUpdatingTask, setIsUpdatingTask] = useState(false);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [deletingColumnId, setDeletingColumnId] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskDraft, setTaskDraft] = useState<TaskEditForm>({
+    title: "",
+    description: "",
+    priority: "medium",
+  });
   const [error, setError] = useState<string | null>(null);
 
   const tasksByColumn = useMemo(() => {
@@ -198,6 +213,145 @@ export default function BoardDetailPage() {
       }
     } finally {
       setIsCreatingTask(false);
+    }
+  }
+
+  function startEditingTask(task: Task) {
+    setError(null);
+    setEditingTaskId(task.id);
+    setTaskDraft({
+      title: task.title,
+      description: task.description || "",
+      priority: task.priority,
+    });
+  }
+
+  function cancelEditingTask() {
+    setEditingTaskId(null);
+    setTaskDraft({
+      title: "",
+      description: "",
+      priority: "medium",
+    });
+  }
+
+  async function handleUpdateTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!token || !editingTaskId || !taskDraft.title.trim()) {
+      return;
+    }
+
+    setError(null);
+    setIsUpdatingTask(true);
+
+    try {
+      const updatedTask = await apiRequest<Task>(`/tasks/${editingTaskId}`, {
+        method: "PATCH",
+        token,
+        body: {
+          title: taskDraft.title.trim(),
+          description: taskDraft.description.trim() || null,
+          priority: taskDraft.priority,
+        },
+      });
+
+      setTasks((currentTasks) =>
+        currentTasks.map((task) =>
+          task.id === updatedTask.id ? updatedTask : task,
+        ),
+      );
+      cancelEditingTask();
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.detail);
+      } else {
+        setError("Could not update task. Please try again.");
+      }
+    } finally {
+      setIsUpdatingTask(false);
+    }
+  }
+
+  async function handleDeleteTask(taskId: string) {
+    if (!token) {
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this task?");
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    setDeletingTaskId(taskId);
+
+    try {
+      await apiRequest<void>(`/tasks/${taskId}`, {
+        method: "DELETE",
+        token,
+      });
+
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.id !== taskId),
+      );
+
+      if (editingTaskId === taskId) {
+        cancelEditingTask();
+      }
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.detail);
+      } else {
+        setError("Could not delete task. Please try again.");
+      }
+    } finally {
+      setDeletingTaskId(null);
+    }
+  }
+
+  async function handleDeleteColumn(columnId: string) {
+    if (!token) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete this column? Tasks in this column will also be removed.",
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    setDeletingColumnId(columnId);
+
+    try {
+      await apiRequest<void>(`/columns/${columnId}`, {
+        method: "DELETE",
+        token,
+      });
+
+      const remainingColumns = columns.filter((column) => column.id !== columnId);
+
+      setColumns(remainingColumns);
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.column_id !== columnId),
+      );
+      setNewTask((current) => ({
+        ...current,
+        columnId:
+          current.columnId === columnId
+            ? remainingColumns[0]?.id || ""
+            : current.columnId,
+      }));
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.detail);
+      } else {
+        setError("Could not delete column. Please try again.");
+      }
+    } finally {
+      setDeletingColumnId(null);
     }
   }
 
@@ -416,8 +570,18 @@ export default function BoardDetailPage() {
                         </p>
                       </div>
 
-                      <div className="rounded-full border border-white/10 bg-slate-950 px-3 py-1 text-xs text-slate-300">
-                        {tasksByColumn[column.id]?.length || 0}
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-full border border-white/10 bg-slate-950 px-3 py-1 text-xs text-slate-300">
+                          {tasksByColumn[column.id]?.length || 0}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteColumn(column.id)}
+                          disabled={deletingColumnId === column.id}
+                          className="rounded-full border border-red-400/20 px-3 py-1 text-xs font-semibold text-red-200 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deletingColumnId === column.id ? "Deleting" : "Delete"}
+                        </button>
                       </div>
                     </div>
 
@@ -432,19 +596,104 @@ export default function BoardDetailPage() {
                             key={task.id}
                             className="rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-xl shadow-slate-950/20"
                           >
-                            <div className="mb-3 flex items-center justify-between gap-3">
-                              <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-200">
-                                {task.priority}
-                              </span>
-                              <span className="text-xs text-slate-500">
-                                #{task.position}
-                              </span>
-                            </div>
+                            {editingTaskId === task.id ? (
+                              <form
+                                onSubmit={handleUpdateTask}
+                                className="space-y-3"
+                              >
+                                <input
+                                  required
+                                  value={taskDraft.title}
+                                  onChange={(event) =>
+                                    setTaskDraft((current) => ({
+                                      ...current,
+                                      title: event.target.value,
+                                    }))
+                                  }
+                                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition focus:border-sky-300"
+                                />
 
-                            <h3 className="font-semibold">{task.title}</h3>
-                            <p className="mt-3 text-sm leading-6 text-slate-400">
-                              {task.description || "No description added."}
-                            </p>
+                                <textarea
+                                  value={taskDraft.description}
+                                  onChange={(event) =>
+                                    setTaskDraft((current) => ({
+                                      ...current,
+                                      description: event.target.value,
+                                    }))
+                                  }
+                                  className="min-h-20 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition focus:border-sky-300"
+                                />
+
+                                <select
+                                  value={taskDraft.priority}
+                                  onChange={(event) =>
+                                    setTaskDraft((current) => ({
+                                      ...current,
+                                      priority: event.target.value,
+                                    }))
+                                  }
+                                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition focus:border-sky-300"
+                                >
+                                  <option value="low">Low</option>
+                                  <option value="medium">Medium</option>
+                                  <option value="high">High</option>
+                                  <option value="urgent">Urgent</option>
+                                </select>
+
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={cancelEditingTask}
+                                    className="flex-1 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    disabled={isUpdatingTask}
+                                    className="flex-1 rounded-xl bg-sky-400 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-70"
+                                  >
+                                    {isUpdatingTask ? "Saving" : "Save"}
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <>
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                  <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-200">
+                                    {task.priority}
+                                  </span>
+                                  <span className="text-xs text-slate-500">
+                                    #{task.position}
+                                  </span>
+                                </div>
+
+                                <h3 className="font-semibold">{task.title}</h3>
+                                <p className="mt-3 text-sm leading-6 text-slate-400">
+                                  {task.description || "No description added."}
+                                </p>
+
+                                <div className="mt-5 flex gap-2 border-t border-white/10 pt-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditingTask(task)}
+                                    className="flex-1 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    disabled={deletingTaskId === task.id}
+                                    className="flex-1 rounded-xl border border-red-400/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    {deletingTaskId === task.id
+                                      ? "Deleting"
+                                      : "Delete"}
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </article>
                         ))
                       )}

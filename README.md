@@ -302,6 +302,7 @@ Example WebSocket event:
 - [x] PR #10: Activity logs backend
 - [x] PR #11: Dashboard UI with board list and create board frontend
 - [x] PR #12: Static Kanban board UI frontend
+- [x] PR #13: Board management UI for editing and deleting tasks and columns
 
 ### Phase 4 - Real-Time Collaboration
 
@@ -321,22 +322,21 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #12 - Static Kanban Board UI
+### PR #13 - Board Management UI
 
-This PR adds the first real board workspace screen for CollabBoard.
+This PR makes the board workspace more complete by adding task editing, task deletion, and column deletion from the Kanban board page.
 
 #### What it includes
 
-- Adds `/boards/[boardId]` dynamic board page
-- Makes dashboard board cards clickable
-- Loads board details from `GET /boards/{board_id}`
-- Loads columns from `GET /boards/{board_id}/columns`
-- Loads tasks from `GET /boards/{board_id}/tasks`
-- Adds create column form through `POST /boards/{board_id}/columns`
-- Adds create task form through `POST /boards/{board_id}/tasks`
-- Displays task cards grouped by column
-- Shows board-level column and task counts
-- Fixes dashboard Tailwind class spacing issues
+- Adds task edit mode directly inside task cards
+- Supports editing task title, description, and priority
+- Saves task updates through `PATCH /tasks/{task_id}`
+- Adds task deletion through `DELETE /tasks/{task_id}`
+- Adds column deletion through `DELETE /columns/{column_id}`
+- Removes deleted tasks from the UI immediately
+- Removes tasks when their column is deleted
+- Updates the create-task column selector after deleting a column
+- Fixes board page Tailwind class spacing issues
 
 #### Local checks
 
