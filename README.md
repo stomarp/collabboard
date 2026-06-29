@@ -303,6 +303,7 @@ Example WebSocket event:
 - [x] PR #11: Dashboard UI with board list and create board frontend
 - [x] PR #12: Static Kanban board UI frontend
 - [x] PR #13: Board management UI for editing and deleting tasks and columns
+- [x] PR #14: Board activity feed UI frontend
 
 ### Phase 4 - Real-Time Collaboration
 
@@ -322,20 +323,22 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #13 - Board Management UI
+### PR #14 - Board Activity Feed UI
 
-This PR makes the board workspace more complete by adding task editing, task deletion, and column deletion from the Kanban board page.
+This PR connects the existing backend activity logs to the board workspace UI so users can see recent board, column, and task events directly inside the product.
 
 #### What it includes
 
-- Adds task edit mode directly inside task cards
-- Supports editing task title, description, and priority
-- Saves task updates through `PATCH /tasks/{task_id}`
-- Adds task deletion through `DELETE /tasks/{task_id}`
-- Adds column deletion through `DELETE /columns/{column_id}`
-- Removes deleted tasks from the UI immediately
-- Removes tasks when their column is deleted
-- Updates the create-task column selector after deleting a column
+- Adds reusable `ActivityFeed` component
+- Loads board activity from `GET /boards/{board_id}/activity`
+- Displays recent activity events on the board page
+- Shows readable labels for board, column, and task events
+- Shows event timestamps in a user-friendly format
+- Refreshes activity after creating columns
+- Refreshes activity after creating tasks
+- Refreshes activity after updating tasks
+- Refreshes activity after deleting tasks
+- Refreshes activity after deleting columns
 - Fixes board page Tailwind class spacing issues
 
 #### Local checks
@@ -346,7 +349,7 @@ This PR makes the board workspace more complete by adding task editing, task del
 
 #### Notes
 
-This PR intentionally does not add drag-and-drop, WebSockets, Redis pub/sub, or live presence yet. Those will be added in later PRs.
+This PR intentionally does not add WebSockets, Redis pub/sub, drag-and-drop, or live presence yet. Those will be added in later PRs.
 
 ## Resume Positioning
 
