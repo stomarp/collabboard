@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { ActivityFeed } from "@/components/boards/ActivityFeed";
 import { ApiError, apiRequest } from "@/lib/api";
 import { clearStoredToken, getStoredToken } from "@/lib/auth";
 
@@ -83,7 +84,12 @@ export default function BoardDetailPage() {
     description: "",
     priority: "medium",
   });
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  function refreshActivityFeed() {
+    setActivityRefreshKey((currentKey) => currentKey + 1);
+  }
 
   const tasksByColumn = useMemo(() => {
     return columns.reduce<Record<string, Task[]>>((groups, column) => {
@@ -164,6 +170,7 @@ export default function BoardDetailPage() {
         ...current,
         columnId: current.columnId || column.id,
       }));
+      refreshActivityFeed();
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.detail);
@@ -205,6 +212,7 @@ export default function BoardDetailPage() {
         description: "",
         priority: "medium",
       }));
+      refreshActivityFeed();
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.detail);
@@ -262,6 +270,7 @@ export default function BoardDetailPage() {
         ),
       );
       cancelEditingTask();
+      refreshActivityFeed();
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.detail);
@@ -299,6 +308,8 @@ export default function BoardDetailPage() {
       if (editingTaskId === taskId) {
         cancelEditingTask();
       }
+
+      refreshActivityFeed();
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.detail);
@@ -344,6 +355,7 @@ export default function BoardDetailPage() {
             ? remainingColumns[0]?.id || ""
             : current.columnId,
       }));
+      refreshActivityFeed();
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.detail);
@@ -544,6 +556,12 @@ export default function BoardDetailPage() {
                 {isCreatingTask ? "Creating..." : "Create task"}
               </button>
             </form>
+
+            <ActivityFeed
+              boardId={boardId}
+              token={token}
+              refreshKey={activityRefreshKey}
+            />
           </aside>
 
           <section>
