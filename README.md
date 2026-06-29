@@ -301,7 +301,7 @@ Example WebSocket event:
 - [x] PR #8: Task and column CRUD API backend
 - [x] PR #10: Activity logs backend
 - [x] PR #11: Dashboard UI with board list and create board frontend
-- [ ] Static Kanban board UI frontend
+- [x] PR #12: Static Kanban board UI frontend
 
 ### Phase 4 - Real-Time Collaboration
 
@@ -321,28 +321,32 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #11 - Auth UI and Protected Dashboard
+### PR #12 - Static Kanban Board UI
 
-This PR adds the first real frontend product flow for CollabBoard.
+This PR adds the first real board workspace screen for CollabBoard.
 
-This PR includes:
+#### What it includes
 
-- `/login`
-- `/register`
-- Protected `/dashboard`
-- Shared API request helper
-- Browser token storage helper
-- Login and registration form component
-- JWT storage after login
-- Redirect to `/login` when dashboard auth is missing or invalid
-- Current user loading through `GET /auth/me`
-- Board list loading through `GET /boards`
-- Create board form through `POST /boards`
-- Logout flow
-- Updated homepage calls-to-action
-- Updated app metadata
+- Adds `/boards/[boardId]` dynamic board page
+- Makes dashboard board cards clickable
+- Loads board details from `GET /boards/{board_id}`
+- Loads columns from `GET /boards/{board_id}/columns`
+- Loads tasks from `GET /boards/{board_id}/tasks`
+- Adds create column form through `POST /boards/{board_id}/columns`
+- Adds create task form through `POST /boards/{board_id}/tasks`
+- Displays task cards grouped by column
+- Shows board-level column and task counts
+- Fixes dashboard Tailwind class spacing issues
 
-This PR intentionally does not add the full Kanban board UI, drag-and-drop, WebSockets, Redis pub/sub, or presence yet. Those will be added in later PRs.
+#### Local checks
+
+- Frontend lint passed
+- Frontend production build passed
+- Repository readiness script passed
+
+#### Notes
+
+This PR intentionally does not add drag-and-drop, WebSockets, Redis pub/sub, or live presence yet. Those will be added in later PRs.
 
 ## Resume Positioning
 

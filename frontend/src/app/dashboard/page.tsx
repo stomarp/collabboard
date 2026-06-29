@@ -213,8 +213,9 @@ export default function DashboardPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {boards.map((board) => (
-                  <article
+                  <Link
                     key={board.id}
+                    href={`/boards/${board.id}`}
                     className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 transition hover:border-sky-300/40 hover:bg-white/[0.08]"
                   >
                     <div className="mb-4 h-2 w-12 rounded-full bg-sky-400" />
@@ -223,9 +224,9 @@ export default function DashboardPage() {
                       {board.description || "No description added yet."}
                     </p>
                     <div className="mt-6 border-t border-white/10 pt-4 text-xs text-slate-500">
-                      Board ID: {board.id}
+                      Open board
                     </div>
-                  </article>
+                  </Link>
                 ))}
               </div>
             )}
