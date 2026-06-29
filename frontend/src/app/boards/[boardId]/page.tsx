@@ -1,0 +1,461 @@
+"use client";
+
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+
+import { ApiError, apiRequest } from "@/lib/api";
+import { clearStoredToken, getStoredToken } from "@/lib/auth";
+
+type Board = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type BoardColumn = {
+  id: string;
+  board_id: string;
+  name: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type Task = {
+  id: string;
+  board_id: string;
+  column_id: string;
+  title: string;
+  description: string | null;
+  position: number;
+  priority: string;
+  assignee_id: string | null;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NewTaskForm = {
+  columnId: string;
+  title: string;
+  description: string;
+  priority: string;
+};
+
+export default function BoardDetailPage() {
+  const router = useRouter();
+  const params = useParams<{ boardId: string }>();
+  const boardId = params.boardId;
+
+  const [token, setToken] = useState<string | null>(null);
+  const [board, setBoard] = useState<Board | null>(null);
+  const [columns, setColumns] = useState<BoardColumn[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const [columnName, setColumnName] = useState("");
+  const [newTask, setNewTask] = useState<NewTaskForm>({
+    columnId: "",
+    title: "",
+    description: "",
+    priority: "medium",
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingColumn, setIsCreatingColumn] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const tasksByColumn = useMemo(() => {
+    return columns.reduce<Record<string, Task[]>>((groups, column) => {
+      groups[column.id] = tasks
+        .filter((task) => task.column_id === column.id)
+        .sort((first, second) => first.position - second.position);
+
+      return groups;
+    }, {});
+  }, [columns, tasks]);
+
+  useEffect(() => {
+    async function loadBoard() {
+      const storedToken = getStoredToken();
+
+      if (!storedToken) {
+        router.replace("/login");
+        return;
+      }
+
+      setToken(storedToken);
+
+      try {
+        const [boardResponse, columnResponse, taskResponse] = await Promise.all([
+          apiRequest<Board>(`/boards/${boardId}`, { token: storedToken }),
+          apiRequest<BoardColumn[]>(`/boards/${boardId}/columns`, {
+            token: storedToken,
+          }),
+          apiRequest<Task[]>(`/boards/${boardId}/tasks`, {
+            token: storedToken,
+          }),
+        ]);
+
+        setBoard(boardResponse);
+        setColumns(columnResponse);
+        setTasks(taskResponse);
+        setNewTask((current) => ({
+          ...current,
+          columnId: columnResponse[0]?.id || "",
+        }));
+      } catch {
+        clearStoredToken();
+        router.replace("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadBoard();
+  }, [boardId, router]);
+
+  async function handleCreateColumn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!token || !columnName.trim()) {
+      return;
+    }
+
+    setError(null);
+    setIsCreatingColumn(true);
+
+    try {
+      const column = await apiRequest<BoardColumn>(
+        `/boards/${boardId}/columns`,
+        {
+          method: "POST",
+          token,
+          body: {
+            name: columnName.trim(),
+          },
+        },
+      );
+
+      setColumns((currentColumns) => [...currentColumns, column]);
+      setColumnName("");
+
+      setNewTask((current) => ({
+        ...current,
+        columnId: current.columnId || column.id,
+      }));
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.detail);
+      } else {
+        setError("Could not create column. Please try again.");
+      }
+    } finally {
+      setIsCreatingColumn(false);
+    }
+  }
+
+  async function handleCreateTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!token || !newTask.columnId || !newTask.title.trim()) {
+      return;
+    }
+
+    setError(null);
+    setIsCreatingTask(true);
+
+    try {
+      const task = await apiRequest<Task>(`/boards/${boardId}/tasks`, {
+        method: "POST",
+        token,
+        body: {
+          column_id: newTask.columnId,
+          title: newTask.title.trim(),
+          description: newTask.description.trim() || null,
+          priority: newTask.priority,
+          assignee_id: null,
+        },
+      });
+
+      setTasks((currentTasks) => [...currentTasks, task]);
+      setNewTask((current) => ({
+        ...current,
+        title: "",
+        description: "",
+        priority: "medium",
+      }));
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.detail);
+      } else {
+        setError("Could not create task. Please try again.");
+      }
+    } finally {
+      setIsCreatingTask(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-white">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-slate-300">
+          Loading board...
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
+      <section className="mx-auto max-w-7xl">
+        <header className="flex flex-col gap-5 border-b border-white/10 pb-8 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <Link href="/dashboard" className="text-sm font-semibold text-sky-300">
+              Back to dashboard
+            </Link>
+            <h1 className="mt-3 text-4xl font-bold tracking-tight">
+              {board?.name || "Board"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-slate-300">
+              {board?.description ||
+                "Plan, organize, and track collaborative work across columns."}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Columns
+              </p>
+              <p className="mt-2 text-2xl font-bold">{columns.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Tasks
+              </p>
+              <p className="mt-2 text-2xl font-bold">{tasks.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Mode
+              </p>
+              <p className="mt-2 text-sm font-semibold text-sky-300">
+                Static Kanban
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {error ? (
+          <div className="mt-6 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-[360px_1fr]">
+          <aside className="space-y-6">
+            <form
+              onSubmit={handleCreateColumn}
+              className="rounded-3xl border border-white/10 bg-white/[0.06] p-6"
+            >
+              <p className="text-sm font-medium uppercase tracking-[0.25em] text-sky-300">
+                New column
+              </p>
+              <h2 className="mt-3 text-2xl font-bold">Add workflow stage</h2>
+
+              <label className="mt-6 block">
+                <span className="text-sm font-medium text-slate-200">
+                  Column name
+                </span>
+                <input
+                  required
+                  value={columnName}
+                  onChange={(event) => setColumnName(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-300"
+                  placeholder="To Do"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={isCreatingColumn}
+                className="mt-6 w-full rounded-xl bg-sky-400 px-5 py-3 font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isCreatingColumn ? "Creating..." : "Create column"}
+              </button>
+            </form>
+
+            <form
+              onSubmit={handleCreateTask}
+              className="rounded-3xl border border-white/10 bg-white/[0.06] p-6"
+            >
+              <p className="text-sm font-medium uppercase tracking-[0.25em] text-sky-300">
+                New task
+              </p>
+              <h2 className="mt-3 text-2xl font-bold">Add task card</h2>
+
+              <label className="mt-6 block">
+                <span className="text-sm font-medium text-slate-200">
+                  Column
+                </span>
+                <select
+                  required
+                  value={newTask.columnId}
+                  onChange={(event) =>
+                    setNewTask((current) => ({
+                      ...current,
+                      columnId: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-300"
+                >
+                  <option value="" disabled>
+                    Select a column
+                  </option>
+                  {columns.map((column) => (
+                    <option key={column.id} value={column.id}>
+                      {column.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="mt-5 block">
+                <span className="text-sm font-medium text-slate-200">
+                  Title
+                </span>
+                <input
+                  required
+                  value={newTask.title}
+                  onChange={(event) =>
+                    setNewTask((current) => ({
+                      ...current,
+                      title: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-300"
+                  placeholder="Design board page"
+                />
+              </label>
+
+              <label className="mt-5 block">
+                <span className="text-sm font-medium text-slate-200">
+                  Description
+                </span>
+                <textarea
+                  value={newTask.description}
+                  onChange={(event) =>
+                    setNewTask((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
+                  }
+                  className="mt-2 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-300"
+                  placeholder="What needs to be done?"
+                />
+              </label>
+
+              <label className="mt-5 block">
+                <span className="text-sm font-medium text-slate-200">
+                  Priority
+                </span>
+                <select
+                  value={newTask.priority}
+                  onChange={(event) =>
+                    setNewTask((current) => ({
+                      ...current,
+                      priority: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-300"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </label>
+
+              <button
+                type="submit"
+                disabled={isCreatingTask || columns.length === 0}
+                className="mt-6 w-full rounded-xl bg-sky-400 px-5 py-3 font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isCreatingTask ? "Creating..." : "Create task"}
+              </button>
+            </form>
+          </aside>
+
+          <section>
+            {columns.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.04] p-10 text-center">
+                <h2 className="text-2xl font-bold">No columns yet</h2>
+                <p className="mt-3 text-slate-400">
+                  Create columns like To Do, In Progress, and Done to start your
+                  Kanban workflow.
+                </p>
+              </div>
+            ) : (
+              <div className="flex gap-5 overflow-x-auto pb-6">
+                {columns.map((column) => (
+                  <div
+                    key={column.id}
+                    className="min-w-80 rounded-3xl border border-white/10 bg-white/[0.06] p-5"
+                  >
+                    <div className="mb-5 flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xl font-bold">{column.name}</h2>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Position {column.position}
+                        </p>
+                      </div>
+
+                      <div className="rounded-full border border-white/10 bg-slate-950 px-3 py-1 text-xs text-slate-300">
+                        {tasksByColumn[column.id]?.length || 0}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {(tasksByColumn[column.id] || []).length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 p-5 text-sm text-slate-500">
+                          No tasks in this column.
+                        </div>
+                      ) : (
+                        tasksByColumn[column.id].map((task) => (
+                          <article
+                            key={task.id}
+                            className="rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-xl shadow-slate-950/20"
+                          >
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-200">
+                                {task.priority}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                #{task.position}
+                              </span>
+                            </div>
+
+                            <h3 className="font-semibold">{task.title}</h3>
+                            <p className="mt-3 text-sm leading-6 text-slate-400">
+                              {task.description || "No description added."}
+                            </p>
+                          </article>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </section>
+    </main>
+  );
+}
