@@ -307,7 +307,7 @@ Example WebSocket event:
 
 ### Phase 4 - Real-Time Collaboration
 
-- [ ] WebSocket ConnectionManager
+- [x] PR #15: WebSocket ConnectionManager backend
 - [ ] Redis pub/sub event broadcasting
 - [ ] `task_moved` and `task_created` events
 - [ ] Drag-and-drop UI with live sync
@@ -323,33 +323,31 @@ Example WebSocket event:
 
 ## Current PR
 
-### PR #14 - Board Activity Feed UI
+### PR #15 - WebSocket Connection Manager Backend
 
-This PR connects the existing backend activity logs to the board workspace UI so users can see recent board, column, and task events directly inside the product.
+This PR starts the real-time collaboration foundation for CollabBoard by adding a secure WebSocket endpoint and board-level connection manager.
 
 #### What it includes
 
-- Adds reusable `ActivityFeed` component
-- Loads board activity from `GET /boards/{board_id}/activity`
-- Displays recent activity events on the board page
-- Shows readable labels for board, column, and task events
-- Shows event timestamps in a user-friendly format
-- Refreshes activity after creating columns
-- Refreshes activity after creating tasks
-- Refreshes activity after updating tasks
-- Refreshes activity after deleting tasks
-- Refreshes activity after deleting columns
-- Fixes board page Tailwind class spacing issues
+- Adds reusable `ConnectionManager` service
+- Tracks active WebSocket connections by board
+- Adds secure WebSocket endpoint at `/ws/boards/{board_id}`
+- Authenticates WebSocket clients using JWT query token
+- Validates active user before accepting the socket
+- Validates board membership before joining a board room
+- Sends `connection.established` event after successful connection
+- Broadcasts `presence.changed` when users connect or disconnect
+- Adds basic `client.message` broadcast foundation
+- Includes realtime router in FastAPI app
 
 #### Local checks
 
-- Frontend lint passed
-- Frontend production build passed
+- Backend Python compile check passed
 - Repository readiness script passed
 
 #### Notes
 
-This PR intentionally does not add WebSockets, Redis pub/sub, drag-and-drop, or live presence yet. Those will be added in later PRs.
+This PR intentionally does not add Redis pub/sub, drag-and-drop events, frontend WebSocket client, or live presence UI yet. Those will be added in later PRs.
 
 ## Resume Positioning
 

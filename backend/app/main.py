@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.boards import router as boards_router
 from app.api.columns import router as columns_router
+from app.api.realtime import router as realtime_router
 from app.api.tasks import router as tasks_router
 from app.core.config import settings
 from app.api.activity_logs import router as activity_logs_router
@@ -18,6 +19,7 @@ app.include_router(auth_router)
 app.include_router(boards_router)
 app.include_router(columns_router)
 app.include_router(tasks_router)
+app.include_router(realtime_router)
 app.include_router(activity_logs_router)
 
 app.add_middleware(
