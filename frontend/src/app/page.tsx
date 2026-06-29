@@ -1,8 +1,8 @@
 const features = [
-  "Real-time task movement",
-  "Live team presence",
+  "JWT protected dashboard",
+  "PostgreSQL-backed boards",
   "Board activity history",
-  "Role-based collaboration",
+  "Real-time ready architecture",
 ];
 
 export default function Home() {
@@ -18,22 +18,28 @@ export default function Home() {
         </h1>
 
         <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-          CollabBoard is a production-style task collaboration platform built with
-          FastAPI, WebSockets, Redis, PostgreSQL, Next.js, and TypeScript.
+          CollabBoard is a production-style task collaboration platform built
+          with FastAPI, WebSockets, Redis, PostgreSQL, Next.js, and TypeScript.
         </p>
 
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
           <a
-            href="/dashboard"
+            href="/register"
             className="rounded-xl bg-sky-400 px-6 py-3 font-semibold text-slate-950 transition hover:bg-sky-300"
           >
-            Open Dashboard
+            Create Account
+          </a>
+          <a
+            href="/login"
+            className="rounded-xl border border-white/15 px-6 py-3 font-semibold text-white transition hover:bg-white/10"
+          >
+            Login
           </a>
           <a
             href="http://localhost:8000/docs"
             className="rounded-xl border border-white/15 px-6 py-3 font-semibold text-white transition hover:bg-white/10"
           >
-            View API Docs
+            API Docs
           </a>
         </div>
 
@@ -46,7 +52,8 @@ export default function Home() {
               <div className="mb-4 h-2 w-10 rounded-full bg-sky-400" />
               <h2 className="text-lg font-semibold">{feature}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                Designed for multi-user collaboration and production-style system design.
+                Designed for multi-user collaboration and production-style
+                system design.
               </p>
             </div>
           ))}
