@@ -413,8 +413,9 @@ Use this sequence to demo the project:
 10. Delete a task.
 11. Delete a column.
 12. View the activity feed.
-13. Open the same board in two browser tabs.
-14. Confirm the live board viewer count updates.
+13. Drag tasks within a column or across columns.
+14. Open the same board in two browser tabs.
+15. Confirm the live board viewer count and task movement updates.
 
 ---
 
@@ -442,6 +443,7 @@ Implemented:
 - Realtime task and column event broadcasting backend
 - Frontend realtime board sync
 - Task movement backend API
+- Drag-and-drop task movement UI
 - Dockerized local development
 - PR readiness script
 
@@ -489,7 +491,7 @@ In progress / planned:
 - [x] PR #19: Realtime task and column event broadcasting backend
 - [x] PR #20: Frontend realtime board sync
 - [x] PR #21: Task movement backend API
-- [ ] Drag-and-drop UI with live sync
+- [x] PR #22: Drag-and-drop task movement UI
 - [ ] Drag-and-drop UI with live sync
 - [ ] Online avatars and richer presence UI
 
