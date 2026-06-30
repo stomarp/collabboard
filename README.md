@@ -273,6 +273,7 @@ Frontend updates live viewer count
 | POST | `/boards/{board_id}/tasks` | Create task |
 | GET | `/tasks/{task_id}` | Get task detail |
 | PATCH | `/tasks/{task_id}` | Update task |
+| PATCH | `/tasks/{task_id}/move` | Move task between columns and positions |
 | DELETE | `/tasks/{task_id}` | Delete task |
 
 ### Activity
@@ -440,6 +441,7 @@ Implemented:
 - Redis pub/sub realtime backend
 - Realtime task and column event broadcasting backend
 - Frontend realtime board sync
+- Task movement backend API
 - Dockerized local development
 - PR readiness script
 
@@ -486,7 +488,8 @@ In progress / planned:
 - [x] PR #18: Redis pub/sub realtime backend
 - [x] PR #19: Realtime task and column event broadcasting backend
 - [x] PR #20: Frontend realtime board sync
-- [ ] Task movement events
+- [x] PR #21: Task movement backend API
+- [ ] Drag-and-drop UI with live sync
 - [ ] Drag-and-drop UI with live sync
 - [ ] Online avatars and richer presence UI
 

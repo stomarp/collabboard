@@ -85,3 +85,90 @@ def validate_assignee_is_board_member(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Assignee must be a member of the board",
         )
+
+
+def list_column_tasks(db: Session, column_id: uuid.UUID) -> list[Task]:
+    return list(
+        db.scalars(
+            select(Task)
+            .where(Task.column_id == column_id)
+            .order_by(Task.position.asc(), Task.created_at.asc())
+        )
+    )
+
+
+def unique_tasks(tasks: list[Task]) -> list[Task]:
+    seen_task_ids: set[uuid.UUID] = set()
+    unique_task_list: list[Task] = []
+
+    for task in tasks:
+        if task.id in seen_task_ids:
+            continue
+
+        seen_task_ids.add(task.id)
+        unique_task_list.append(task)
+
+    return unique_task_list
+
+
+def move_tasks_to_temporary_positions(db: Session, tasks: list[Task]) -> None:
+    for index, task in enumerate(tasks):
+        task.position = -(index + 1)
+
+    db.flush()
+
+
+def move_task_to_position(
+    db: Session,
+    task: Task,
+    target_column_id: uuid.UUID,
+    target_position: int,
+) -> list[Task]:
+    target_column = get_board_column_or_404(db, task.board_id, target_column_id)
+    source_column_id = task.column_id
+
+    source_tasks = list_column_tasks(db, source_column_id)
+    source_without_task = [
+        current_task
+        for current_task in source_tasks
+        if current_task.id != task.id
+    ]
+
+    if source_column_id == target_column.id:
+        next_tasks = source_without_task
+        normalized_position = min(max(target_position, 0), len(next_tasks))
+        next_tasks.insert(normalized_position, task)
+
+        affected_tasks = unique_tasks(next_tasks)
+        move_tasks_to_temporary_positions(db, affected_tasks)
+
+        for position, current_task in enumerate(next_tasks):
+            current_task.column_id = source_column_id
+            current_task.position = position
+
+        db.flush()
+        return affected_tasks
+
+    target_tasks = list_column_tasks(db, target_column.id)
+    target_without_task = [
+        current_task
+        for current_task in target_tasks
+        if current_task.id != task.id
+    ]
+
+    normalized_position = min(max(target_position, 0), len(target_without_task))
+    target_without_task.insert(normalized_position, task)
+
+    affected_tasks = unique_tasks(source_without_task + target_without_task)
+    move_tasks_to_temporary_positions(db, affected_tasks)
+
+    for position, current_task in enumerate(source_without_task):
+        current_task.column_id = source_column_id
+        current_task.position = position
+
+    for position, current_task in enumerate(target_without_task):
+        current_task.column_id = target_column.id
+        current_task.position = position
+
+    db.flush()
+    return affected_tasks
