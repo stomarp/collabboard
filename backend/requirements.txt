@@ -8,3 +8,4 @@ psycopg[binary]
 email-validator
 bcrypt
 PyJWT
+redis>=5.0
