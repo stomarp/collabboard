@@ -11,6 +11,7 @@ The project is designed to demonstrate production-style full-stack engineering w
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791)
 ![WebSockets](https://img.shields.io/badge/WebSockets-Realtime-6f42c1)
 ![Docker](https://img.shields.io/badge/Docker-Local%20Dev-2496ED)
+![CI](https://img.shields.io/badge/GitHub%20Actions-CI-2088FF)
 
 ---
 
@@ -142,7 +143,7 @@ CollabBoard provides a complete team workspace flow:
 - Redis local service
 - Git and GitHub pull request workflow
 - PR readiness script
-- Planned GitHub Actions CI/CD
+- GitHub Actions CI
 - Planned Render backend deployment
 - Planned Vercel frontend deployment
 
@@ -380,6 +381,16 @@ NEXT_PUBLIC_APP_NAME=CollabBoard
 
 ## Quality Checks
 
+GitHub Actions CI runs on pull requests and pushes to `main`.
+
+The CI workflow checks:
+
+- Backend Python compilation
+- Frontend dependency installation
+- Frontend linting
+- Frontend production build
+- Docker Compose config validation
+
 Run the PR readiness check before committing feature work:
 
 ```bash
@@ -469,10 +480,10 @@ Implemented:
 - Realtime QA checklist
 - Dockerized local development
 - PR readiness script
+- GitHub Actions CI workflow
 
 Not shipped yet:
 
-- GitHub Actions CI/CD
 - Production deployment
 - README screenshots
 - Architecture diagram
@@ -536,7 +547,7 @@ The checklist below tracks merged project milestones. PR numbers match GitHub pu
 
 ### Phase 6 - Ship Readiness
 
-- [ ] GitHub Actions CI/CD
+- [x] PR #27: GitHub Actions CI workflow
 - [ ] Production backend deployment
 - [ ] Production frontend deployment
 - [ ] README screenshots
