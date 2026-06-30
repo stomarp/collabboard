@@ -48,7 +48,7 @@ CollabBoard provides a complete team workspace flow:
 6. The system records board activity automatically.
 7. The board page shows recent activity history.
 8. WebSocket presence shows realtime board connection status and viewer count.
-9. Future work will add Redis pub/sub, drag-and-drop task movement, and live board synchronization.
+9. Redis pub/sub broadcasts realtime task, column, comment, and movement events across connected board clients.
 
 ---
 
@@ -71,6 +71,8 @@ CollabBoard provides a complete team workspace flow:
 - Create columns
 - Create tasks
 - Edit task title, description, and priority
+- Drag tasks within and across columns
+- Add and delete task comments
 - Delete tasks
 - Delete columns and remove related tasks from the UI
 
@@ -86,9 +88,10 @@ CollabBoard provides a complete team workspace flow:
 - Secure WebSocket endpoint
 - JWT validation for WebSocket clients
 - Board-level WebSocket rooms
-- Connection lifecycle handling
+- Redis pub/sub event broadcasting
 - Live connection status
 - Live board viewer count
+- Realtime column, task, movement, and comment updates
 - Reconnect behavior on the frontend
 
 ---
@@ -103,10 +106,11 @@ CollabBoard provides a complete team workspace flow:
 6. Open the board workspace.
 7. Create workflow columns.
 8. Create task cards with priority and description.
-9. Edit or delete tasks.
-10. Delete a column and confirm UI cleanup.
+9. Edit, delete, comment on, and move task cards.
+10. Drag tasks within a column or across columns.
 11. Review board activity history.
-12. Open the same board in another browser tab and observe live presence count.
+12. Open the same board in another browser tab.
+13. Confirm live presence, realtime task sync, realtime comment sync, and movement updates.
 
 ---
 
@@ -154,6 +158,7 @@ Browser / Next.js Frontend
   | - boards
   | - columns
   | - tasks
+  | - comments
   | - activity
   |
   | WebSocket connection
@@ -448,6 +453,7 @@ Implemented:
 - Board CRUD API
 - Column CRUD API
 - Task CRUD API
+- Task comments API
 - Activity logs backend
 - Auth UI
 - Protected dashboard
@@ -455,53 +461,59 @@ Implemented:
 - Board management UI
 - Board activity feed UI
 - Secure WebSocket ConnectionManager backend
-- Frontend WebSocket presence UI
 - Redis pub/sub realtime backend
-- Realtime task and column event broadcasting backend
+- Frontend WebSocket presence UI
 - Frontend realtime board sync
-- Task movement backend API
-- Drag-and-drop task movement UI
-- Realtime QA checklist
-- Task comments backend API
+- Drag-and-drop task movement backend and UI
 - Frontend task comments UI
+- Realtime QA checklist
 - Dockerized local development
 - PR readiness script
 
-In progress / planned:
+Not shipped yet:
 
-- Drag-and-drop task movement
-- Online avatars
-- Comments and mentions
-- Board invite system
 - GitHub Actions CI/CD
 - Production deployment
-- README screenshots and architecture diagram
+- README screenshots
+- Architecture diagram
+- Board invite/member management UI
+- Online avatars and richer presence UI
+- Mentions and notifications
+
+Deployment status:
+
+- Local development is fully Dockerized.
+- Production backend and frontend deployment are planned next.
+- Live demo links will be added only after deployment is complete.
 
 ---
 
 ## Roadmap
 
+The checklist below tracks merged project milestones. PR numbers match GitHub pull request numbers; any gaps reflect GitHub numbering across opened, draft, or closed PRs.
+
 ### Phase 1 - Project Setup
 
 - [x] PR #1: Initialize monorepo with backend and frontend setup
-- [x] PR #2: FastAPI app skeleton with health check setup
-- [x] PR #3: Next.js frontend scaffold setup
+- [x] PR #3: FastAPI backend health check
+- [x] PR #4: Next.js frontend scaffold
+- [x] PR #9: Repository quality guardrails
+- [x] PR #17: README product polish
 
 ### Phase 2 - Auth and Database
 
-- [x] PR #4: SQLAlchemy models and Alembic migrations backend
-- [x] PR #5: JWT register and login endpoints backend
+- [x] PR #5: SQLAlchemy models and Alembic migrations
+- [x] PR #6: JWT auth endpoints
 - [x] PR #11: Auth UI and protected dashboard frontend
 
 ### Phase 3 - Core Board Features
 
-- [x] PR #7: Board CRUD REST API backend
-- [x] PR #8: Task and column CRUD API backend
+- [x] PR #7: Board CRUD API
+- [x] PR #8: Column and task CRUD API
 - [x] PR #10: Activity logs backend
-- [x] PR #11: Dashboard UI with board list and create board frontend
-- [x] PR #12: Static Kanban board UI frontend
+- [x] PR #12: Static Kanban board UI
 - [x] PR #13: Board management UI for editing and deleting tasks and columns
-- [x] PR #14: Board activity feed UI frontend
+- [x] PR #14: Board activity feed UI
 
 ### Phase 4 - Real-Time Collaboration
 
@@ -513,19 +525,23 @@ In progress / planned:
 - [x] PR #21: Task movement backend API
 - [x] PR #22: Drag-and-drop task movement UI
 - [x] PR #23: Realtime QA checklist and demo polish
+
+### Phase 5 - Comments and Collaboration
+
 - [x] PR #24: Task comments backend API
 - [x] PR #25: Frontend task comments UI
-- [ ] Drag-and-drop UI with live sync
+- [ ] Board invite/member management
 - [ ] Online avatars and richer presence UI
+- [ ] Mentions and notifications
 
-### Phase 5 - Polish and Ship
+### Phase 6 - Ship Readiness
 
-- [ ] Comments and mentions
-- [ ] Board member invite system
 - [ ] GitHub Actions CI/CD
-- [ ] Production deployment
+- [ ] Production backend deployment
+- [ ] Production frontend deployment
 - [ ] README screenshots
 - [ ] Architecture diagram
+- [ ] Live demo link after deployment
 
 ---
 
