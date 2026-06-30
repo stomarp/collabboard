@@ -168,7 +168,7 @@ FastAPI Backend
 
 PostgreSQL
   |
-  | Planned scalable realtime event layer
+  | Realtime event broadcasting layer
   v
 
 Redis Pub/Sub
@@ -437,12 +437,12 @@ Implemented:
 - Board activity feed UI
 - Secure WebSocket ConnectionManager backend
 - Frontend WebSocket presence UI
+- Redis pub/sub realtime backend
 - Dockerized local development
 - PR readiness script
 
 In progress / planned:
 
-- Redis pub/sub event broadcasting
 - Drag-and-drop task movement
 - Live task sync across connected users
 - Online avatars
@@ -482,7 +482,7 @@ In progress / planned:
 
 - [x] PR #15: WebSocket ConnectionManager backend
 - [x] PR #16: Frontend WebSocket presence UI
-- [ ] Redis pub/sub event broadcasting
+- [x] PR #18: Redis pub/sub realtime backend
 - [ ] Task movement events
 - [ ] Drag-and-drop UI with live sync
 - [ ] Online avatars and richer presence UI

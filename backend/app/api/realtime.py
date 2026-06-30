@@ -7,10 +7,21 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import User
 from app.services.boards import require_board_role
+from app.services.redis_pubsub import publish_board_event
 from app.services.security import decode_access_token
 from app.services.websockets import connection_manager
 
 router = APIRouter(tags=["realtime"])
+
+
+async def broadcast_board_event(
+    board_id: uuid.UUID,
+    message: dict,
+) -> None:
+    published = await publish_board_event(board_id, message)
+
+    if not published:
+        await broadcast_board_event(board_id, message)
 
 
 def get_user_from_websocket_token(token: str | None, db: Session) -> User | None:
@@ -62,7 +73,7 @@ async def board_websocket(
         },
     )
 
-    await connection_manager.broadcast_to_board(
+    await broadcast_board_event(
         board_id,
         {
             "type": "presence.changed",
@@ -75,7 +86,7 @@ async def board_websocket(
         while True:
             message = await websocket.receive_json()
 
-            await connection_manager.broadcast_to_board(
+            await broadcast_board_event(
                 board_id,
                 {
                     "type": "client.message",
@@ -87,7 +98,7 @@ async def board_websocket(
     except WebSocketDisconnect:
         connection_manager.disconnect(board_id, websocket)
 
-        await connection_manager.broadcast_to_board(
+        await broadcast_board_event(
             board_id,
             {
                 "type": "presence.changed",
