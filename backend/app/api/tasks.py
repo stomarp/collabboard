@@ -10,6 +10,11 @@ from app.models import Task, User
 from app.schemas.tasks import TaskCreate, TaskRead, TaskUpdate
 from app.services.activity_logs import log_activity
 from app.services.boards import require_board_role
+from app.services.realtime_events import (
+    publish_realtime_board_event,
+    serialize_dict,
+    serialize_task,
+)
 from app.services.columns_tasks import (
     EDITOR_ROLES,
     VIEWER_ROLES,
@@ -43,7 +48,7 @@ def list_tasks(
     response_model=TaskRead,
     status_code=status.HTTP_201_CREATED,
 )
-def create_task(
+async def create_task(
     board_id: uuid.UUID,
     payload: TaskCreate,
     db: Session = Depends(get_db),
@@ -85,6 +90,17 @@ def create_task(
 
     db.commit()
     db.refresh(task)
+
+    await publish_realtime_board_event(
+        board_id,
+        {
+            "type": "task.created",
+            "board_id": str(board_id),
+            "actor_id": str(current_user.id),
+            "task": serialize_task(task),
+        },
+    )
+
     return task
 
 
@@ -98,7 +114,7 @@ def get_task(
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskRead)
-def update_task(
+async def update_task(
     task_id: uuid.UUID,
     payload: TaskUpdate,
     db: Session = Depends(get_db),
@@ -134,11 +150,25 @@ def update_task(
 
     db.commit()
     db.refresh(task)
+
+    if update_data:
+        await publish_realtime_board_event(
+            task.board_id,
+            {
+                "type": "task.updated",
+                "board_id": str(task.board_id),
+                "actor_id": str(current_user.id),
+                "task": serialize_task(task),
+                "before": serialize_dict(previous_values),
+                "after": serialize_dict(update_data),
+            },
+        )
+
     return task
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(
+async def delete_task(
     task_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -160,6 +190,20 @@ def delete_task(
         },
     )
 
+    board_id = task.board_id
+    task_payload = serialize_task(task)
+
     db.delete(task)
     db.commit()
+
+    await publish_realtime_board_event(
+        board_id,
+        {
+            "type": "task.deleted",
+            "board_id": str(board_id),
+            "actor_id": str(current_user.id),
+            "task": task_payload,
+        },
+    )
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)

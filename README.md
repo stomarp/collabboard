@@ -438,6 +438,7 @@ Implemented:
 - Secure WebSocket ConnectionManager backend
 - Frontend WebSocket presence UI
 - Redis pub/sub realtime backend
+- Realtime task and column event broadcasting backend
 - Dockerized local development
 - PR readiness script
 
@@ -483,6 +484,7 @@ In progress / planned:
 - [x] PR #15: WebSocket ConnectionManager backend
 - [x] PR #16: Frontend WebSocket presence UI
 - [x] PR #18: Redis pub/sub realtime backend
+- [x] PR #19: Realtime task and column event broadcasting backend
 - [ ] Task movement events
 - [ ] Drag-and-drop UI with live sync
 - [ ] Online avatars and richer presence UI
