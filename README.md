@@ -397,6 +397,14 @@ npm run build
 
 ---
 
+## QA Checklist
+
+A detailed realtime QA checklist is available here:
+
+- [`docs/REALTIME_QA_CHECKLIST.md`](docs/REALTIME_QA_CHECKLIST.md)
+
+---
+
 ## Demo Script
 
 Use this sequence to demo the project:
@@ -444,6 +452,7 @@ Implemented:
 - Frontend realtime board sync
 - Task movement backend API
 - Drag-and-drop task movement UI
+- Realtime QA checklist
 - Dockerized local development
 - PR readiness script
 
@@ -492,6 +501,7 @@ In progress / planned:
 - [x] PR #20: Frontend realtime board sync
 - [x] PR #21: Task movement backend API
 - [x] PR #22: Drag-and-drop task movement UI
+- [x] PR #23: Realtime QA checklist and demo polish
 - [ ] Drag-and-drop UI with live sync
 - [ ] Online avatars and richer presence UI
 
