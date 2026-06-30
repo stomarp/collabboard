@@ -276,6 +276,14 @@ Frontend updates live viewer count
 | PATCH | `/tasks/{task_id}/move` | Move task between columns and positions |
 | DELETE | `/tasks/{task_id}` | Delete task |
 
+### Comments
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/tasks/{task_id}/comments` | List task comments |
+| POST | `/tasks/{task_id}/comments` | Create task comment |
+| DELETE | `/comments/{comment_id}` | Delete task comment |
+
 ### Activity
 
 | Method | Endpoint | Purpose |
@@ -453,6 +461,7 @@ Implemented:
 - Task movement backend API
 - Drag-and-drop task movement UI
 - Realtime QA checklist
+- Task comments backend API
 - Dockerized local development
 - PR readiness script
 
@@ -502,6 +511,7 @@ In progress / planned:
 - [x] PR #21: Task movement backend API
 - [x] PR #22: Drag-and-drop task movement UI
 - [x] PR #23: Realtime QA checklist and demo polish
+- [x] PR #24: Task comments backend API
 - [ ] Drag-and-drop UI with live sync
 - [ ] Online avatars and richer presence UI
 

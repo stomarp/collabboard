@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from app.models import BoardColumn, Task
+from app.models import BoardColumn, Comment, Task
 from app.services.redis_pubsub import publish_board_event
 from app.services.websockets import connection_manager
 
@@ -48,6 +48,17 @@ def serialize_task(task: Task) -> dict[str, Any]:
         "created_by_id": str(task.created_by_id) if task.created_by_id else None,
         "created_at": task.created_at.isoformat(),
         "updated_at": task.updated_at.isoformat(),
+    }
+
+
+def serialize_comment(comment: Comment) -> dict[str, Any]:
+    return {
+        "id": str(comment.id),
+        "task_id": str(comment.task_id),
+        "user_id": str(comment.user_id) if comment.user_id else None,
+        "body": comment.body,
+        "created_at": comment.created_at.isoformat(),
+        "updated_at": comment.updated_at.isoformat(),
     }
 
 
