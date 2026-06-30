@@ -428,10 +428,11 @@ Use this sequence to demo the project:
 9. Edit a task.
 10. Delete a task.
 11. Delete a column.
-12. View the activity feed.
-13. Drag tasks within a column or across columns.
-14. Open the same board in two browser tabs.
-15. Confirm the live board viewer count and task movement updates.
+12. Add and delete task comments.
+13. View the activity feed.
+14. Drag tasks within a column or across columns.
+15. Open the same board in two browser tabs.
+16. Confirm the live board viewer count, comments, and task movement updates.
 
 ---
 
@@ -462,6 +463,7 @@ Implemented:
 - Drag-and-drop task movement UI
 - Realtime QA checklist
 - Task comments backend API
+- Frontend task comments UI
 - Dockerized local development
 - PR readiness script
 
@@ -512,6 +514,7 @@ In progress / planned:
 - [x] PR #22: Drag-and-drop task movement UI
 - [x] PR #23: Realtime QA checklist and demo polish
 - [x] PR #24: Task comments backend API
+- [x] PR #25: Frontend task comments UI
 - [ ] Drag-and-drop UI with live sync
 - [ ] Online avatars and richer presence UI
 
