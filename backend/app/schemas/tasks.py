@@ -19,6 +19,11 @@ class TaskUpdate(BaseModel):
     assignee_id: uuid.UUID | None = None
 
 
+class TaskMove(BaseModel):
+    column_id: uuid.UUID
+    position: int = Field(ge=0)
+
+
 class TaskRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import Task, User
-from app.schemas.tasks import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.tasks import TaskCreate, TaskMove, TaskRead, TaskUpdate
 from app.services.activity_logs import log_activity
 from app.services.boards import require_board_role
 from app.services.realtime_events import (
@@ -21,6 +21,7 @@ from app.services.columns_tasks import (
     get_board_column_or_404,
     get_next_task_position,
     get_task_for_user,
+    move_task_to_position,
     validate_assignee_is_board_member,
 )
 
@@ -111,6 +112,71 @@ def get_task(
     current_user: User = Depends(get_current_user),
 ) -> Task:
     return get_task_for_user(db, task_id, current_user, VIEWER_ROLES)
+
+
+
+@router.patch("/tasks/{task_id}/move", response_model=TaskRead)
+async def move_task(
+    task_id: uuid.UUID,
+    payload: TaskMove,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Task:
+    task = get_task_for_user(db, task_id, current_user, EDITOR_ROLES)
+
+    before_values = {
+        "column_id": task.column_id,
+        "position": task.position,
+    }
+
+    affected_tasks = move_task_to_position(
+        db,
+        task,
+        payload.column_id,
+        payload.position,
+    )
+
+    after_values = {
+        "column_id": task.column_id,
+        "position": task.position,
+    }
+
+    log_activity(
+        db,
+        board_id=task.board_id,
+        actor_id=current_user.id,
+        event_type="task.moved",
+        entity_type="task",
+        entity_id=task.id,
+        payload={
+            "title": task.title,
+            "before": before_values,
+            "after": after_values,
+        },
+    )
+
+    db.commit()
+
+    for affected_task in affected_tasks:
+        db.refresh(affected_task)
+
+    await publish_realtime_board_event(
+        task.board_id,
+        {
+            "type": "task.moved",
+            "board_id": str(task.board_id),
+            "actor_id": str(current_user.id),
+            "task": serialize_task(task),
+            "tasks": [
+                serialize_task(affected_task)
+                for affected_task in affected_tasks
+            ],
+            "before": serialize_dict(before_values),
+            "after": serialize_dict(after_values),
+        },
+    )
+
+    return task
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskRead)
