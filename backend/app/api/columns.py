@@ -10,6 +10,11 @@ from app.models import BoardColumn, User
 from app.schemas.columns import ColumnCreate, ColumnRead, ColumnUpdate
 from app.services.activity_logs import log_activity
 from app.services.boards import require_board_role
+from app.services.realtime_events import (
+    publish_realtime_board_event,
+    serialize_column,
+    serialize_dict,
+)
 from app.services.columns_tasks import (
     EDITOR_ROLES,
     VIEWER_ROLES,
@@ -41,7 +46,7 @@ def list_columns(
     response_model=ColumnRead,
     status_code=status.HTTP_201_CREATED,
 )
-def create_column(
+async def create_column(
     board_id: uuid.UUID,
     payload: ColumnCreate,
     db: Session = Depends(get_db),
@@ -72,11 +77,22 @@ def create_column(
 
     db.commit()
     db.refresh(column)
+
+    await publish_realtime_board_event(
+        board_id,
+        {
+            "type": "column.created",
+            "board_id": str(board_id),
+            "actor_id": str(current_user.id),
+            "column": serialize_column(column),
+        },
+    )
+
     return column
 
 
 @router.patch("/columns/{column_id}", response_model=ColumnRead)
-def update_column(
+async def update_column(
     column_id: uuid.UUID,
     payload: ColumnUpdate,
     db: Session = Depends(get_db),
@@ -109,11 +125,25 @@ def update_column(
 
     db.commit()
     db.refresh(column)
+
+    if update_data:
+        await publish_realtime_board_event(
+            column.board_id,
+            {
+                "type": "column.updated",
+                "board_id": str(column.board_id),
+                "actor_id": str(current_user.id),
+                "column": serialize_column(column),
+                "before": serialize_dict(previous_values),
+                "after": serialize_dict(update_data),
+            },
+        )
+
     return column
 
 
 @router.delete("/columns/{column_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_column(
+async def delete_column(
     column_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -133,6 +163,20 @@ def delete_column(
         },
     )
 
+    board_id = column.board_id
+    column_payload = serialize_column(column)
+
     db.delete(column)
     db.commit()
+
+    await publish_realtime_board_event(
+        board_id,
+        {
+            "type": "column.deleted",
+            "board_id": str(board_id),
+            "actor_id": str(current_user.id),
+            "column": column_payload,
+        },
+    )
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
