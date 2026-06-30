@@ -52,6 +52,15 @@ type Task = {
   updated_at: string;
 };
 
+type TaskComment = {
+  id: string;
+  task_id: string;
+  user_id: string | null;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
+
 type NewTaskForm = {
   columnId: string;
   title: string;
@@ -104,6 +113,21 @@ function isTaskPayload(value: unknown): value is Task {
     typeof value.priority === "string" &&
     isNullableString(value.assignee_id) &&
     isNullableString(value.created_by_id) &&
+    typeof value.created_at === "string" &&
+    typeof value.updated_at === "string"
+  );
+}
+
+function isCommentPayload(value: unknown): value is TaskComment {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.task_id === "string" &&
+    isNullableString(value.user_id) &&
+    typeof value.body === "string" &&
     typeof value.created_at === "string" &&
     typeof value.updated_at === "string"
   );
@@ -168,6 +192,65 @@ function reorderTasksForPreview(
   return sortTasks([...taskMap.values()]);
 }
 
+function sortComments(commentsToSort: TaskComment[]) {
+  return [...commentsToSort].sort(
+    (first, second) =>
+      new Date(first.created_at).getTime() - new Date(second.created_at).getTime(),
+  );
+}
+
+function upsertComment(
+  commentsToUpdate: TaskComment[],
+  comment: TaskComment,
+) {
+  const exists = commentsToUpdate.some(
+    (currentComment) => currentComment.id === comment.id,
+  );
+
+  if (!exists) {
+    return sortComments([...commentsToUpdate, comment]);
+  }
+
+  return sortComments(
+    commentsToUpdate.map((currentComment) =>
+      currentComment.id === comment.id ? comment : currentComment,
+    ),
+  );
+}
+
+function formatCommentTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+async function loadCommentsForTasks(
+  taskList: Task[],
+  activeToken: string,
+): Promise<Record<string, TaskComment[]>> {
+  const commentEntries = await Promise.all(
+    taskList.map(async (task) => {
+      const comments = await apiRequest<TaskComment[]>(
+        `/tasks/${task.id}/comments`,
+        { token: activeToken },
+      );
+
+      return [task.id, comments] as const;
+    }),
+  );
+
+  return Object.fromEntries(commentEntries);
+}
+
 function sortColumns(columnsToSort: BoardColumn[]) {
   return [...columnsToSort].sort(
     (first, second) => first.position - second.position,
@@ -223,6 +306,9 @@ export default function BoardDetailPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [commentsByTask, setCommentsByTask] = useState<
+    Record<string, TaskComment[]>
+  >({});
 
   const [columnName, setColumnName] = useState("");
   const [newTask, setNewTask] = useState<NewTaskForm>({
@@ -240,6 +326,11 @@ export default function BoardDetailPage() {
   const [deletingColumnId, setDeletingColumnId] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
+  const [creatingCommentTaskId, setCreatingCommentTaskId] = useState<
+    string | null
+  >(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskDraft, setTaskDraft] = useState<TaskEditForm>({
     title: "",
@@ -304,6 +395,41 @@ export default function BoardDetailPage() {
       return;
     }
 
+    if (message.type === "comment.created") {
+      if (!isCommentPayload(message.comment)) {
+        return;
+      }
+
+      const comment = message.comment;
+
+      setCommentsByTask((currentComments) => ({
+        ...currentComments,
+        [comment.task_id]: upsertComment(
+          currentComments[comment.task_id] || [],
+          comment,
+        ),
+      }));
+      setActivityRefreshKey((currentKey) => currentKey + 1);
+      return;
+    }
+
+    if (message.type === "comment.deleted") {
+      if (!isCommentPayload(message.comment)) {
+        return;
+      }
+
+      const deletedComment = message.comment;
+
+      setCommentsByTask((currentComments) => ({
+        ...currentComments,
+        [deletedComment.task_id]: (
+          currentComments[deletedComment.task_id] || []
+        ).filter((comment) => comment.id !== deletedComment.id),
+      }));
+      setActivityRefreshKey((currentKey) => currentKey + 1);
+      return;
+    }
+
     if (message.type === "task.created" || message.type === "task.updated") {
       if (!isTaskPayload(message.task)) {
         return;
@@ -352,6 +478,12 @@ export default function BoardDetailPage() {
         currentTasks.filter((task) => task.id !== deletedTask.id),
       );
 
+      setCommentsByTask((currentComments) => {
+        const nextComments = { ...currentComments };
+        delete nextComments[deletedTask.id];
+        return nextComments;
+      });
+
       setEditingTaskId((currentEditingTaskId) =>
         currentEditingTaskId === deletedTask.id ? null : currentEditingTaskId,
       );
@@ -392,9 +524,15 @@ export default function BoardDetailPage() {
           }),
         ]);
 
+        const commentsResponse = await loadCommentsForTasks(
+          taskResponse,
+          storedToken,
+        );
+
         setBoard(boardResponse);
         setColumns(columnResponse);
         setTasks(taskResponse);
+        setCommentsByTask(commentsResponse);
         setNewTask((current) => ({
           ...current,
           columnId: columnResponse[0]?.id || "",
@@ -475,6 +613,10 @@ export default function BoardDetailPage() {
       });
 
       setTasks((currentTasks) => [...currentTasks, task]);
+      setCommentsByTask((currentComments) => ({
+        ...currentComments,
+        [task.id]: [],
+      }));
       setNewTask((current) => ({
         ...current,
         title: "",
@@ -573,6 +715,12 @@ export default function BoardDetailPage() {
       setTasks((currentTasks) =>
         currentTasks.filter((task) => task.id !== taskId),
       );
+
+      setCommentsByTask((currentComments) => {
+        const nextComments = { ...currentComments };
+        delete nextComments[taskId];
+        return nextComments;
+      });
 
       if (editingTaskId === taskId) {
         cancelEditingTask();
@@ -706,6 +854,95 @@ export default function BoardDetailPage() {
     }
   }
 
+
+  async function handleCreateComment(
+    event: FormEvent<HTMLFormElement>,
+    taskId: string,
+  ) {
+    event.preventDefault();
+
+    if (!token) {
+      return;
+    }
+
+    const body = (commentDrafts[taskId] || "").trim();
+
+    if (!body) {
+      return;
+    }
+
+    setError(null);
+    setCreatingCommentTaskId(taskId);
+
+    try {
+      const comment = await apiRequest<TaskComment>(
+        `/tasks/${taskId}/comments`,
+        {
+          method: "POST",
+          token,
+          body: {
+            body,
+          },
+        },
+      );
+
+      setCommentsByTask((currentComments) => ({
+        ...currentComments,
+        [taskId]: upsertComment(currentComments[taskId] || [], comment),
+      }));
+      setCommentDrafts((currentDrafts) => ({
+        ...currentDrafts,
+        [taskId]: "",
+      }));
+      refreshActivityFeed();
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.detail);
+      } else {
+        setError("Could not add comment. Please try again.");
+      }
+    } finally {
+      setCreatingCommentTaskId(null);
+    }
+  }
+
+  async function handleDeleteComment(comment: TaskComment) {
+    if (!token) {
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this comment?");
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    setDeletingCommentId(comment.id);
+
+    try {
+      await apiRequest<void>(`/comments/${comment.id}`, {
+        method: "DELETE",
+        token,
+      });
+
+      setCommentsByTask((currentComments) => ({
+        ...currentComments,
+        [comment.task_id]: (currentComments[comment.task_id] || []).filter(
+          (currentComment) => currentComment.id !== comment.id,
+        ),
+      }));
+      refreshActivityFeed();
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.detail);
+      } else {
+        setError("Could not delete comment. Please try again.");
+      }
+    } finally {
+      setDeletingCommentId(null);
+    }
+  }
+
   async function handleDeleteColumn(columnId: string) {
     if (!token) {
       return;
@@ -733,6 +970,17 @@ export default function BoardDetailPage() {
       setTasks((currentTasks) =>
         currentTasks.filter((task) => task.column_id !== columnId),
       );
+      setCommentsByTask((currentComments) => {
+        const nextComments = { ...currentComments };
+
+        tasks
+          .filter((task) => task.column_id === columnId)
+          .forEach((task) => {
+            delete nextComments[task.id];
+          });
+
+        return nextComments;
+      });
       setNewTask((current) => ({
         ...current,
         columnId:
@@ -1096,6 +1344,90 @@ export default function BoardDetailPage() {
                                 <p className="mt-3 text-sm leading-6 text-slate-400">
                                   {task.description || "No description added."}
                                 </p>
+
+                                <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                  <div className="mb-3 flex items-center justify-between gap-3">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                      Comments
+                                    </p>
+                                    <span className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-400">
+                                      {commentsByTask[task.id]?.length || 0}
+                                    </span>
+                                  </div>
+
+                                  {(commentsByTask[task.id] || []).length === 0 ? (
+                                    <p className="text-sm text-slate-500">
+                                      No comments yet.
+                                    </p>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      {(commentsByTask[task.id] || []).map(
+                                        (comment) => (
+                                          <div
+                                            key={comment.id}
+                                            className="rounded-xl border border-white/10 bg-slate-900 p-3"
+                                          >
+                                            <div className="mb-2 flex items-center justify-between gap-3">
+                                              <span className="text-xs text-slate-500">
+                                                {formatCommentTime(
+                                                  comment.created_at,
+                                                )}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleDeleteComment(comment)
+                                                }
+                                                disabled={
+                                                  deletingCommentId === comment.id
+                                                }
+                                                className="text-xs font-semibold text-red-200 transition hover:text-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                              >
+                                                {deletingCommentId === comment.id
+                                                  ? "Deleting"
+                                                  : "Delete"}
+                                              </button>
+                                            </div>
+                                            <p className="text-sm leading-6 text-slate-300">
+                                              {comment.body}
+                                            </p>
+                                          </div>
+                                        ),
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <form
+                                    onSubmit={(event) =>
+                                      handleCreateComment(event, task.id)
+                                    }
+                                    className="mt-4 space-y-3"
+                                  >
+                                    <textarea
+                                      value={commentDrafts[task.id] || ""}
+                                      onChange={(event) =>
+                                        setCommentDrafts((currentDrafts) => ({
+                                          ...currentDrafts,
+                                          [task.id]: event.target.value,
+                                        }))
+                                      }
+                                      className="min-h-20 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition focus:border-sky-300"
+                                      placeholder="Add a comment..."
+                                    />
+                                    <button
+                                      type="submit"
+                                      disabled={
+                                        creatingCommentTaskId === task.id ||
+                                        !(commentDrafts[task.id] || "").trim()
+                                      }
+                                      className="w-full rounded-xl border border-sky-300/30 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                      {creatingCommentTaskId === task.id
+                                        ? "Adding..."
+                                        : "Add comment"}
+                                    </button>
+                                  </form>
+                                </div>
 
                                 <div className="mt-5 flex gap-2 border-t border-white/10 pt-4">
                                   <button
