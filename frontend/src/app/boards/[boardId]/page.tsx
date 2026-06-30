@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ActivityFeed } from "@/components/boards/ActivityFeed";
-import { PresencePanel } from "@/components/boards/PresencePanel";
+import {
+  PresencePanel,
+  type RealtimeBoardMessage,
+} from "@/components/boards/PresencePanel";
 import { ApiError, apiRequest } from "@/lib/api";
 import { clearStoredToken, getStoredToken } from "@/lib/auth";
 
@@ -55,6 +58,96 @@ type TaskEditForm = {
   priority: string;
 };
 
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isBoardColumnPayload(value: unknown): value is BoardColumn {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.board_id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.position === "number" &&
+    typeof value.created_at === "string" &&
+    typeof value.updated_at === "string"
+  );
+}
+
+function isTaskPayload(value: unknown): value is Task {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.board_id === "string" &&
+    typeof value.column_id === "string" &&
+    typeof value.title === "string" &&
+    isNullableString(value.description) &&
+    typeof value.position === "number" &&
+    typeof value.priority === "string" &&
+    isNullableString(value.assignee_id) &&
+    isNullableString(value.created_by_id) &&
+    typeof value.created_at === "string" &&
+    typeof value.updated_at === "string"
+  );
+}
+
+function sortColumns(columnsToSort: BoardColumn[]) {
+  return [...columnsToSort].sort(
+    (first, second) => first.position - second.position,
+  );
+}
+
+function sortTasks(tasksToSort: Task[]) {
+  return [...tasksToSort].sort((first, second) => {
+    const columnCompare = first.column_id.localeCompare(second.column_id);
+
+    if (columnCompare !== 0) {
+      return columnCompare;
+    }
+
+    return first.position - second.position;
+  });
+}
+
+function upsertColumn(columnsToUpdate: BoardColumn[], column: BoardColumn) {
+  const exists = columnsToUpdate.some((currentColumn) => currentColumn.id === column.id);
+
+  if (!exists) {
+    return sortColumns([...columnsToUpdate, column]);
+  }
+
+  return sortColumns(
+    columnsToUpdate.map((currentColumn) =>
+      currentColumn.id === column.id ? column : currentColumn,
+    ),
+  );
+}
+
+function upsertTask(tasksToUpdate: Task[], task: Task) {
+  const exists = tasksToUpdate.some((currentTask) => currentTask.id === task.id);
+
+  if (!exists) {
+    return sortTasks([...tasksToUpdate, task]);
+  }
+
+  return sortTasks(
+    tasksToUpdate.map((currentTask) =>
+      currentTask.id === task.id ? task : currentTask,
+    ),
+  );
+}
+
 export default function BoardDetailPage() {
   const router = useRouter();
   const params = useParams<{ boardId: string }>();
@@ -91,6 +184,88 @@ export default function BoardDetailPage() {
   function refreshActivityFeed() {
     setActivityRefreshKey((currentKey) => currentKey + 1);
   }
+
+
+  const handleRealtimeMessage = useCallback((message: RealtimeBoardMessage) => {
+    if (message.type === "column.created" || message.type === "column.updated") {
+      if (!isBoardColumnPayload(message.column)) {
+        return;
+      }
+
+      const column = message.column;
+
+      setColumns((currentColumns) => upsertColumn(currentColumns, column));
+
+      setNewTask((current) => ({
+        ...current,
+        columnId: current.columnId || column.id,
+      }));
+
+      setActivityRefreshKey((currentKey) => currentKey + 1);
+      return;
+    }
+
+    if (message.type === "column.deleted") {
+      if (!isBoardColumnPayload(message.column)) {
+        return;
+      }
+
+      const deletedColumn = message.column;
+
+      setColumns((currentColumns) => {
+        const remainingColumns = currentColumns.filter(
+          (column) => column.id !== deletedColumn.id,
+        );
+
+        setNewTask((current) => ({
+          ...current,
+          columnId:
+            current.columnId === deletedColumn.id
+              ? remainingColumns[0]?.id || ""
+              : current.columnId,
+        }));
+
+        return remainingColumns;
+      });
+
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.column_id !== deletedColumn.id),
+      );
+
+      setActivityRefreshKey((currentKey) => currentKey + 1);
+      return;
+    }
+
+    if (message.type === "task.created" || message.type === "task.updated") {
+      if (!isTaskPayload(message.task)) {
+        return;
+      }
+
+      const task = message.task;
+
+      setTasks((currentTasks) => upsertTask(currentTasks, task));
+      setActivityRefreshKey((currentKey) => currentKey + 1);
+      return;
+    }
+
+    if (message.type === "task.deleted") {
+      if (!isTaskPayload(message.task)) {
+        return;
+      }
+
+      const deletedTask = message.task;
+
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.id !== deletedTask.id),
+      );
+
+      setEditingTaskId((currentEditingTaskId) =>
+        currentEditingTaskId === deletedTask.id ? null : currentEditingTaskId,
+      );
+
+      setActivityRefreshKey((currentKey) => currentKey + 1);
+    }
+  }, []);
 
   const tasksByColumn = useMemo(() => {
     return columns.reduce<Record<string, Task[]>>((groups, column) => {
@@ -413,7 +588,7 @@ export default function BoardDetailPage() {
                 Mode
               </p>
               <p className="mt-2 text-sm font-semibold text-sky-300">
-                Static Kanban
+                Realtime Sync
               </p>
             </div>
           </div>
@@ -558,7 +733,11 @@ export default function BoardDetailPage() {
               </button>
             </form>
 
-            <PresencePanel boardId={boardId} token={token} />
+            <PresencePanel
+  boardId={boardId}
+  token={token}
+  onRealtimeMessage={handleRealtimeMessage}
+/>
 
             <ActivityFeed
               boardId={boardId}

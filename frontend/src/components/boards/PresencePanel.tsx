@@ -4,17 +4,20 @@ import { useEffect, useState } from "react";
 
 import { getWebSocketUrl } from "@/lib/api";
 
+export type RealtimeBoardMessage = {
+  type?: string;
+  connection_count?: number;
+  task?: unknown;
+  column?: unknown;
+};
+
 type PresencePanelProps = {
   boardId: string;
   token: string | null;
+  onRealtimeMessage?: (message: RealtimeBoardMessage) => void;
 };
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
-
-type RealtimeMessage = {
-  type?: string;
-  connection_count?: number;
-};
 
 function statusLabel(status: ConnectionStatus) {
   if (status === "connected") {
@@ -32,7 +35,11 @@ function statusLabel(status: ConnectionStatus) {
   return "Disconnected";
 }
 
-export function PresencePanel({ boardId, token }: PresencePanelProps) {
+export function PresencePanel({
+  boardId,
+  token,
+  onRealtimeMessage,
+}: PresencePanelProps) {
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [viewerCount, setViewerCount] = useState(0);
   const [lastEvent, setLastEvent] = useState("Waiting for realtime events");
@@ -61,7 +68,9 @@ export function PresencePanel({ boardId, token }: PresencePanelProps) {
 
       socket.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data) as RealtimeMessage;
+          const message = JSON.parse(event.data) as RealtimeBoardMessage;
+
+          onRealtimeMessage?.(message);
 
           if (typeof message.connection_count === "number") {
             setViewerCount(message.connection_count);
@@ -106,7 +115,7 @@ export function PresencePanel({ boardId, token }: PresencePanelProps) {
         socket.close();
       }
     };
-  }, [boardId, token]);
+  }, [boardId, token, onRealtimeMessage]);
 
   return (
     <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
