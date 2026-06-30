@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  DragEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { ActivityFeed } from "@/components/boards/ActivityFeed";
 import {
@@ -102,6 +109,65 @@ function isTaskPayload(value: unknown): value is Task {
   );
 }
 
+
+function isTaskListPayload(value: unknown): value is Task[] {
+  return Array.isArray(value) && value.every(isTaskPayload);
+}
+
+function reorderTasksForPreview(
+  tasksToUpdate: Task[],
+  taskId: string,
+  targetColumnId: string,
+  targetPosition: number,
+) {
+  const taskToMove = tasksToUpdate.find((task) => task.id === taskId);
+
+  if (!taskToMove) {
+    return tasksToUpdate;
+  }
+
+  const sourceColumnId = taskToMove.column_id;
+  const remainingTasks = tasksToUpdate.filter((task) => task.id !== taskId);
+  const taskMap = new Map(remainingTasks.map((task) => [task.id, task]));
+
+  if (sourceColumnId !== targetColumnId) {
+    const sourceTasks = remainingTasks
+      .filter((task) => task.column_id === sourceColumnId)
+      .sort((first, second) => first.position - second.position);
+
+    sourceTasks.forEach((task, position) => {
+      taskMap.set(task.id, {
+        ...task,
+        position,
+      });
+    });
+  }
+
+  const targetTasks = remainingTasks
+    .filter((task) => task.column_id === targetColumnId)
+    .sort((first, second) => first.position - second.position);
+
+  const normalizedPosition = Math.min(
+    Math.max(targetPosition, 0),
+    targetTasks.length,
+  );
+
+  targetTasks.splice(normalizedPosition, 0, {
+    ...taskToMove,
+    column_id: targetColumnId,
+  });
+
+  targetTasks.forEach((task, position) => {
+    taskMap.set(task.id, {
+      ...task,
+      column_id: targetColumnId,
+      position,
+    });
+  });
+
+  return sortTasks([...taskMap.values()]);
+}
+
 function sortColumns(columnsToSort: BoardColumn[]) {
   return [...columnsToSort].sort(
     (first, second) => first.position - second.position,
@@ -172,6 +238,8 @@ export default function BoardDetailPage() {
   const [isUpdatingTask, setIsUpdatingTask] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [deletingColumnId, setDeletingColumnId] = useState<string | null>(null);
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskDraft, setTaskDraft] = useState<TaskEditForm>({
     title: "",
@@ -245,6 +313,31 @@ export default function BoardDetailPage() {
 
       setTasks((currentTasks) => upsertTask(currentTasks, task));
       setActivityRefreshKey((currentKey) => currentKey + 1);
+      return;
+    }
+
+
+    if (message.type === "task.moved") {
+      if (isTaskListPayload(message.tasks)) {
+        const movedTasks = message.tasks;
+
+        setTasks((currentTasks) =>
+          movedTasks.reduce(
+            (nextTasks, task) => upsertTask(nextTasks, task),
+            currentTasks,
+          ),
+        );
+        setActivityRefreshKey((currentKey) => currentKey + 1);
+        return;
+      }
+
+      if (isTaskPayload(message.task)) {
+        const movedTask = message.task;
+
+        setTasks((currentTasks) => upsertTask(currentTasks, movedTask));
+        setActivityRefreshKey((currentKey) => currentKey + 1);
+      }
+
       return;
     }
 
@@ -497,6 +590,122 @@ export default function BoardDetailPage() {
     }
   }
 
+
+  function getDropPosition(columnId: string, targetTaskId?: string) {
+    const columnTasks = tasksByColumn[columnId] || [];
+
+    if (!targetTaskId) {
+      return columnTasks.length;
+    }
+
+    const targetIndex = columnTasks.findIndex((task) => task.id === targetTaskId);
+
+    if (targetIndex === -1) {
+      return columnTasks.length;
+    }
+
+    const draggedTask = tasks.find((task) => task.id === draggingTaskId);
+
+    if (draggedTask?.column_id === columnId) {
+      const currentIndex = columnTasks.findIndex(
+        (task) => task.id === draggedTask.id,
+      );
+
+      if (currentIndex !== -1 && targetIndex > currentIndex) {
+        return targetIndex - 1;
+      }
+    }
+
+    return targetIndex;
+  }
+
+  function handleTaskDragStart(
+    event: DragEvent<HTMLElement>,
+    taskId: string,
+  ) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", taskId);
+    setDraggingTaskId(taskId);
+  }
+
+  function handleTaskDragOver(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function handleTaskDragEnd() {
+    setDraggingTaskId(null);
+  }
+
+  async function handleTaskDrop(
+    event: DragEvent<HTMLElement>,
+    columnId: string,
+    targetTaskId?: string,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!token) {
+      return;
+    }
+
+    const taskId = event.dataTransfer.getData("text/plain") || draggingTaskId;
+
+    if (!taskId || taskId === targetTaskId) {
+      setDraggingTaskId(null);
+      return;
+    }
+
+    const taskToMove = tasks.find((task) => task.id === taskId);
+
+    if (!taskToMove) {
+      setDraggingTaskId(null);
+      return;
+    }
+
+    const nextPosition = getDropPosition(columnId, targetTaskId);
+    const isSameLocation =
+      taskToMove.column_id === columnId && taskToMove.position === nextPosition;
+
+    if (isSameLocation) {
+      setDraggingTaskId(null);
+      return;
+    }
+
+    const previousTasks = tasks;
+
+    setError(null);
+    setMovingTaskId(taskId);
+    setDraggingTaskId(null);
+    setTasks((currentTasks) =>
+      reorderTasksForPreview(currentTasks, taskId, columnId, nextPosition),
+    );
+
+    try {
+      const movedTask = await apiRequest<Task>(`/tasks/${taskId}/move`, {
+        method: "PATCH",
+        token,
+        body: {
+          column_id: columnId,
+          position: nextPosition,
+        },
+      });
+
+      setTasks((currentTasks) => upsertTask(currentTasks, movedTask));
+      refreshActivityFeed();
+    } catch (caughtError) {
+      setTasks(previousTasks);
+
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.detail);
+      } else {
+        setError("Could not move task. Please try again.");
+      }
+    } finally {
+      setMovingTaskId(null);
+    }
+  }
+
   async function handleDeleteColumn(columnId: string) {
     if (!token) {
       return;
@@ -734,10 +943,10 @@ export default function BoardDetailPage() {
             </form>
 
             <PresencePanel
-  boardId={boardId}
-  token={token}
-  onRealtimeMessage={handleRealtimeMessage}
-/>
+              boardId={boardId}
+              token={token}
+              onRealtimeMessage={handleRealtimeMessage}
+            />
 
             <ActivityFeed
               boardId={boardId}
@@ -760,6 +969,8 @@ export default function BoardDetailPage() {
                 {columns.map((column) => (
                   <div
                     key={column.id}
+                    onDragOver={handleTaskDragOver}
+                    onDrop={(event) => handleTaskDrop(event, column.id)}
                     className="min-w-80 rounded-3xl border border-white/10 bg-white/[0.06] p-5"
                   >
                     <div className="mb-5 flex items-center justify-between">
@@ -794,7 +1005,20 @@ export default function BoardDetailPage() {
                         tasksByColumn[column.id].map((task) => (
                           <article
                             key={task.id}
-                            className="rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-xl shadow-slate-950/20"
+                            draggable={editingTaskId !== task.id}
+                            onDragStart={(event) =>
+                              handleTaskDragStart(event, task.id)
+                            }
+                            onDragOver={handleTaskDragOver}
+                            onDrop={(event) =>
+                              handleTaskDrop(event, column.id, task.id)
+                            }
+                            onDragEnd={handleTaskDragEnd}
+                            className={`rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-xl shadow-slate-950/20 transition ${
+                              draggingTaskId === task.id || movingTaskId === task.id
+                                ? "scale-[0.98] opacity-60"
+                                : "hover:border-sky-300/40"
+                            }`}
                           >
                             {editingTaskId === task.id ? (
                               <form
@@ -864,7 +1088,7 @@ export default function BoardDetailPage() {
                                     {task.priority}
                                   </span>
                                   <span className="text-xs text-slate-500">
-                                    #{task.position}
+                                    Drag #{task.position}
                                   </span>
                                 </div>
 

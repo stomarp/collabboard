@@ -9,6 +9,7 @@ export type RealtimeBoardMessage = {
   connection_count?: number;
   task?: unknown;
   column?: unknown;
+  tasks?: unknown;
 };
 
 type PresencePanelProps = {
