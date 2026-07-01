@@ -27,6 +27,14 @@ Note: the backend currently runs on a free Render instance, so the first request
 
 ---
 
+## Product Screenshots
+
+### Landing Page
+
+![CollabBoard landing page](docs/screenshots/homepage.png)
+
+---
+
 ## Executive Summary
 
 CollabBoard is not a simple CRUD task board. It is a production-style collaboration system built around authenticated users, board-level access, task management, activity logging, and real-time presence.
@@ -517,7 +525,7 @@ Implemented:
 Not shipped yet:
 
 - Production deployment
-- README screenshots
+- README screenshots added
 - Architecture diagram
 - Board invite/member management UI
 - Online avatars and richer presence UI
@@ -584,7 +592,7 @@ The checklist below tracks merged project milestones. PR numbers match GitHub pu
 - [x] PR #29: Add live demo links
 - [x] Create Render backend service
 - [x] Create Vercel frontend project
-- [ ] README screenshots
+- [x] README screenshots
 - [ ] Architecture diagram
 - [ ] Live demo link after deployment
 
