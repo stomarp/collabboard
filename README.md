@@ -17,6 +17,16 @@ The project is designed to demonstrate production-style full-stack engineering w
 
 ---
 
+## Live Demo
+
+- Frontend: [https://collabboard-jade.vercel.app](https://collabboard-jade.vercel.app)
+- Backend API: [https://collabboard-ipwi.onrender.com](https://collabboard-ipwi.onrender.com)
+- Backend health check: [https://collabboard-ipwi.onrender.com/health](https://collabboard-ipwi.onrender.com/health)
+
+Note: the backend currently runs on a free Render instance, so the first request after inactivity may take extra time while the service wakes up.
+
+---
+
 ## Executive Summary
 
 CollabBoard is not a simple CRUD task board. It is a production-style collaboration system built around authenticated users, board-level access, task management, activity logging, and real-time presence.
@@ -516,7 +526,7 @@ Not shipped yet:
 Deployment status:
 
 - Local development is fully Dockerized.
-- Render/Vercel config files are prepared; service creation is planned next.
+- Production services are live on Render and Vercel.
 - Live demo links will be added only after deployment is complete.
 
 ---
@@ -571,8 +581,9 @@ The checklist below tracks merged project milestones. PR numbers match GitHub pu
 
 - [x] PR #27: GitHub Actions CI workflow
 - [x] PR #28: Production deployment configuration
-- [ ] Create Render backend service
-- [ ] Create Vercel frontend project
+- [x] PR #29: Add live demo links
+- [x] Create Render backend service
+- [x] Create Vercel frontend project
 - [ ] README screenshots
 - [ ] Architecture diagram
 - [ ] Live demo link after deployment
@@ -596,7 +607,7 @@ CollabBoard is intended to show engineering depth beyond simple CRUD apps and AI
 
 ### Resume Bullet
 
-Built CollabBoard, a full-stack real-time collaborative workspace platform using FastAPI, PostgreSQL, SQLAlchemy, Alembic, WebSockets, Next.js, TypeScript, and Docker; implemented JWT authentication, protected dashboards, board/column/task CRUD, activity logs, live board presence, and a production-style PR-driven development workflow.
+Built and deployed CollabBoard, a full-stack real-time collaborative workspace platform using FastAPI, PostgreSQL, SQLAlchemy, Alembic, Redis Pub/Sub, WebSockets, Next.js, TypeScript, and Docker; implemented JWT authentication, protected dashboards, board/column/task CRUD, activity logs, live board presence, and a production-style PR-driven development workflow.
 
 ---
 
