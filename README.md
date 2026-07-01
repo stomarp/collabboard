@@ -2,13 +2,14 @@
 
 ### Real-Time Collaborative Workspace Platform
 
-CollabBoard is a full-stack collaborative workspace platform where users can create boards, manage Kanban columns and task cards, track activity history, and view live board presence through WebSockets.
+CollabBoard is a deployed full-stack collaborative workspace platform where users can create boards, manage Kanban columns and task cards, add task comments, track activity history, and view live board presence through WebSockets.
 
-The project is designed to demonstrate production-style full-stack engineering with FastAPI, PostgreSQL, SQLAlchemy, Alembic, WebSockets, Next.js, TypeScript, Tailwind CSS, Docker, and JWT-based authentication.
+The project demonstrates production-style full-stack engineering with FastAPI, PostgreSQL, SQLAlchemy, Alembic, Redis Pub/Sub, WebSockets, Next.js, TypeScript, Tailwind CSS, Docker, GitHub Actions CI, JWT authentication, Render backend deployment, Vercel frontend deployment, and Neon PostgreSQL.
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)
 ![Next.js](https://img.shields.io/badge/Next.js-Frontend-black)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791)
+![Redis](https://img.shields.io/badge/Redis-Pub%2FSub-DC382D)
 ![WebSockets](https://img.shields.io/badge/WebSockets-Realtime-6f42c1)
 ![Docker](https://img.shields.io/badge/Docker-Local%20Dev-2496ED)
 ![CI](https://img.shields.io/badge/GitHub%20Actions-CI-2088FF)
@@ -37,23 +38,26 @@ Note: the backend currently runs on a free Render instance, so the first request
 
 ## Executive Summary
 
-CollabBoard is not a simple CRUD task board. It is a production-style collaboration system built around authenticated users, board-level access, task management, activity logging, and real-time presence.
+CollabBoard is not a simple CRUD task board. It is a production-style collaboration system built around authenticated users, board-level access, Kanban task management, task comments, activity logging, Redis-backed realtime broadcasting, WebSocket presence, and deployed frontend/backend services.
 
-The project is being built incrementally through focused pull requests to show real engineering process: database modeling, backend API design, frontend product flows, WebSocket architecture, Dockerized development, and future CI/CD deployment.
+The project was built incrementally through focused pull requests to show a realistic engineering process: database modeling, backend API design, frontend product flows, WebSocket architecture, Dockerized development, CI workflow setup, deployment preparation, and production shipping.
 
 ---
 
 ## Problem Statement
 
-Modern teams need lightweight collaboration tools that support task ownership, live updates, secure board access, and clear visibility into what changed. Many basic Kanban apps only show static task cards and do not demonstrate the backend architecture required for real-time multi-user collaboration.
+Modern teams need lightweight collaboration tools that support task ownership, live updates, secure board access, discussion around work items, and clear visibility into what changed. Many basic Kanban apps only show static task cards and do not demonstrate the backend architecture required for real-time multi-user collaboration.
 
 CollabBoard solves this by combining:
 
 - Authenticated user flows
 - Board and task management
+- Task comments
 - Activity/audit history
 - WebSocket-powered live presence
+- Redis Pub/Sub event broadcasting
 - Production-style backend and frontend structure
+- Deployed Render/Vercel architecture
 
 ---
 
@@ -65,11 +69,12 @@ CollabBoard provides a complete team workspace flow:
 2. Users create boards from a protected dashboard.
 3. Users open a board workspace.
 4. Users create columns such as To Do, In Progress, and Done.
-5. Users create, edit, and delete task cards.
+5. Users create, edit, delete, comment on, and move task cards.
 6. The system records board activity automatically.
 7. The board page shows recent activity history.
 8. WebSocket presence shows realtime board connection status and viewer count.
-9. Redis pub/sub broadcasts realtime task, column, comment, and movement events across connected board clients.
+9. Redis Pub/Sub broadcasts realtime task, column, comment, and movement events across connected board clients.
+10. The deployed frontend communicates with the deployed backend over HTTPS and secure WebSockets.
 
 ---
 
@@ -101,25 +106,37 @@ CollabBoard provides a complete team workspace flow:
 
 - Board activity log API
 - Activity feed on the board page
-- Tracks board, column, and task events
+- Tracks board, column, task, movement, and comment events
 - User-friendly event labels and timestamps
 
-### Real-Time Foundation
+### Real-Time Collaboration
 
 - Secure WebSocket endpoint
 - JWT validation for WebSocket clients
 - Board-level WebSocket rooms
-- Redis pub/sub event broadcasting
+- Redis Pub/Sub event broadcasting
 - Live connection status
 - Live board viewer count
 - Realtime column, task, movement, and comment updates
 - Reconnect behavior on the frontend
 
+### Deployment and Tooling
+
+- Dockerized local development
+- PostgreSQL local service
+- Redis local service
+- PR readiness script
+- GitHub Actions CI workflow
+- Render backend deployment
+- Vercel frontend deployment
+- Neon production PostgreSQL database
+- Render Key Value Redis-compatible realtime broker
+
 ---
 
 ## End-to-End User Journey
 
-1. Open the app homepage.
+1. Open the deployed app homepage.
 2. Register a new account.
 3. Log in with the created account.
 4. Open the protected dashboard.
@@ -127,11 +144,12 @@ CollabBoard provides a complete team workspace flow:
 6. Open the board workspace.
 7. Create workflow columns.
 8. Create task cards with priority and description.
-9. Edit, delete, comment on, and move task cards.
-10. Drag tasks within a column or across columns.
-11. Review board activity history.
-12. Open the same board in another browser tab.
-13. Confirm live presence, realtime task sync, realtime comment sync, and movement updates.
+9. Add and delete task comments.
+10. Edit, delete, and move task cards.
+11. Drag tasks within a column or across columns.
+12. Review board activity history.
+13. Open the same board in another browser tab.
+14. Confirm live presence, realtime task sync, realtime comment sync, and movement updates.
 
 ---
 
@@ -145,6 +163,7 @@ CollabBoard provides a complete team workspace flow:
 - WebSocket client
 - Protected client-side routes
 - Local token storage
+- Vercel deployment
 
 ### Backend
 
@@ -155,17 +174,43 @@ CollabBoard provides a complete team workspace flow:
 - PostgreSQL
 - JWT authentication
 - WebSocket ConnectionManager
+- Redis Pub/Sub
+- Render deployment
+
+### Database and Realtime Infrastructure
+
+- Neon PostgreSQL for production database
+- Local PostgreSQL through Docker Compose
+- Render Key Value for Redis-compatible production pub/sub
+- Local Redis through Docker Compose
 
 ### Infrastructure and Tooling
 
 - Docker Compose
-- PostgreSQL local service
-- Redis local service
 - Git and GitHub pull request workflow
-- PR readiness script
 - GitHub Actions CI
+- PR readiness script
 - Render backend deployment configuration
 - Vercel frontend deployment configuration
+
+---
+
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+    user[User Browser] --> vercel[Vercel Next.js Frontend]
+
+    vercel -->|HTTPS REST API| render[Render FastAPI Backend]
+    vercel -->|Secure WebSocket wss| render
+
+    render -->|SQLAlchemy ORM| neon[Neon PostgreSQL]
+    render -->|Redis Pub/Sub| redis[Render Key Value]
+
+    render --> auth[JWT Auth and Board Access Control]
+    render --> realtime[Realtime Board Rooms]
+    render --> activity[Activity Logs]
+```
 
 ---
 
@@ -184,6 +229,9 @@ Browser / Next.js Frontend
   |
   | WebSocket connection
   | - live board presence
+  | - realtime task updates
+  | - realtime comment updates
+  | - realtime drag/drop movement
   v
 
 FastAPI Backend
@@ -235,11 +283,35 @@ Backend creates task in selected column
   |
 Backend writes activity log
   |
+Backend publishes realtime task.created event
+  |
 PostgreSQL stores task and activity
   |
-Board UI updates task card list
+Redis broadcasts event
   |
-Activity feed refreshes
+Connected board clients update task cards
+```
+
+### Task Comment Flow
+
+```text
+User submits comment form
+  |
+Next.js calls POST /tasks/{task_id}/comments
+  |
+FastAPI validates board role
+  |
+Backend creates comment
+  |
+Backend writes activity log
+  |
+Backend publishes realtime comment.created event
+  |
+PostgreSQL stores comment and activity
+  |
+Redis broadcasts event
+  |
+Connected board clients update comments
 ```
 
 ### WebSocket Presence Flow
@@ -258,6 +330,26 @@ Backend sends connection.established
 Backend broadcasts presence.changed
   |
 Frontend updates live viewer count
+```
+
+### Drag-and-Drop Movement Flow
+
+```text
+User drags task card
+  |
+Next.js calls PATCH /tasks/{task_id}/move
+  |
+FastAPI validates board role
+  |
+Backend reorders affected tasks
+  |
+Backend writes task.moved activity log
+  |
+Backend publishes realtime task.moved event
+  |
+Redis broadcasts affected task list
+  |
+Connected board clients update task positions
 ```
 
 ---
@@ -332,11 +424,19 @@ Frontend updates live viewer count
 | `/login` | Public | Login page |
 | `/register` | Public | Registration page |
 | `/dashboard` | Protected | Board dashboard |
-| `/boards/[boardId]` | Protected | Board workspace with Kanban UI, presence, and activity |
+| `/boards/[boardId]` | Protected | Board workspace with Kanban UI, comments, presence, realtime sync, and activity |
 
 ---
 
 ## Production Deployment
+
+Production URLs:
+
+| Layer | URL |
+|---|---|
+| Frontend | [https://collabboard-jade.vercel.app](https://collabboard-jade.vercel.app) |
+| Backend API | [https://collabboard-ipwi.onrender.com](https://collabboard-ipwi.onrender.com) |
+| Health Check | [https://collabboard-ipwi.onrender.com/health](https://collabboard-ipwi.onrender.com/health) |
 
 Deployment documentation is available here:
 
@@ -348,7 +448,7 @@ Production deployment target:
 |---|---|---|
 | Frontend | Vercel | Next.js app from `frontend/` |
 | Backend API | Render Web Service | FastAPI REST API and WebSocket server |
-| Database | Render PostgreSQL | Managed production PostgreSQL |
+| Database | Neon PostgreSQL | Managed production PostgreSQL |
 | Realtime broker | Render Key Value | Redis-compatible pub/sub service |
 
 The backend startup script runs Alembic migrations before starting Uvicorn.
@@ -416,6 +516,27 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_APP_NAME=CollabBoard
 ```
 
+Production backend environment example:
+
+```env
+APP_NAME=CollabBoard API
+APP_ENV=production
+FRONTEND_URL=https://collabboard-jade.vercel.app
+CORS_ORIGINS=https://collabboard-jade.vercel.app
+DATABASE_URL=<Neon PostgreSQL connection string>
+REDIS_URL=<Render Key Value internal URL>
+JWT_SECRET_KEY=<secure random secret>
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+```
+
+Production frontend environment example:
+
+```env
+NEXT_PUBLIC_API_URL=https://collabboard-ipwi.onrender.com
+NEXT_PUBLIC_APP_NAME=CollabBoard
+```
+
 ---
 
 ## Quality Checks
@@ -472,70 +593,76 @@ A detailed realtime QA checklist is available here:
 
 Use this sequence to demo the project:
 
-1. Start the app with Docker Compose.
-2. Open `http://localhost:3000`.
-3. Register a new user.
-4. Log in and open the dashboard.
-5. Create a board.
-6. Open the board workspace.
-7. Create columns: To Do, In Progress, Done.
-8. Create a few tasks with priority and description.
-9. Edit a task.
-10. Delete a task.
-11. Delete a column.
-12. Add and delete task comments.
-13. View the activity feed.
-14. Drag tasks within a column or across columns.
-15. Open the same board in two browser tabs.
-16. Confirm the live board viewer count, comments, and task movement updates.
+1. Open the live frontend at `https://collabboard-jade.vercel.app`.
+2. Register a new user.
+3. Log in and open the dashboard.
+4. Create a board.
+5. Open the board workspace.
+6. Create columns: To Do, In Progress, Done.
+7. Create a few tasks with priority and description.
+8. Edit a task.
+9. Delete a task.
+10. Add and delete task comments.
+11. View the activity feed.
+12. Drag tasks within a column or across columns.
+13. Open the same board in two browser tabs.
+14. Confirm the live board viewer count, comments, and task movement updates.
 
 ---
 
 ## Current Status
 
-Implemented:
+Shipped and live:
 
-- Monorepo setup
+- Deployed production frontend on Vercel
+- Deployed production backend API on Render
+- Live backend health check endpoint
+- Monorepo setup with backend and frontend apps
 - FastAPI backend
 - Next.js frontend
 - PostgreSQL schema and Alembic migrations
+- Neon production PostgreSQL database connection
+- Redis-compatible pub/sub layer for realtime events
 - JWT authentication
-- Board CRUD API
-- Column CRUD API
-- Task CRUD API
-- Task comments API
-- Activity logs backend
-- Auth UI
 - Protected dashboard
-- Static Kanban board UI
-- Board management UI
+- Board CRUD API and UI
+- Column CRUD API and UI
+- Task CRUD API and UI
+- Task comments API and UI
+- Activity logs backend
 - Board activity feed UI
 - Secure WebSocket ConnectionManager backend
-- Redis pub/sub realtime backend
 - Frontend WebSocket presence UI
 - Frontend realtime board sync
 - Drag-and-drop task movement backend and UI
-- Frontend task comments UI
+- Realtime task, column, movement, and comment events
 - Realtime QA checklist
 - Dockerized local development
 - PR readiness script
 - GitHub Actions CI workflow
 - Production deployment configuration
+- Live demo links in README
+- Product screenshot in README
+- Architecture diagram in README
 
-Not shipped yet:
+Future improvements:
 
-- Production deployment
-- README screenshots added
-- Architecture diagram
+- Additional board/workspace screenshots
 - Board invite/member management UI
 - Online avatars and richer presence UI
 - Mentions and notifications
+- Automated backend API tests with pytest
+- Production monitoring and demo reliability improvements
 
 Deployment status:
 
 - Local development is fully Dockerized.
-- Production services are live on Render and Vercel.
-- Live demo links will be added only after deployment is complete.
+- Production frontend is live on Vercel.
+- Production backend is live on Render.
+- Production database is connected through Neon PostgreSQL.
+- Redis-compatible realtime pub/sub is connected through Render Key Value.
+- Live demo links are included in the README.
+- Render free instances may cold start after inactivity, so the first backend request can take extra time.
 
 ---
 
@@ -593,8 +720,11 @@ The checklist below tracks merged project milestones. PR numbers match GitHub pu
 - [x] Create Render backend service
 - [x] Create Vercel frontend project
 - [x] README screenshots
-- [ ] Architecture diagram
-- [ ] Live demo link after deployment
+- [x] Architecture diagram
+- [x] Live demo link after deployment
+- [ ] Additional board/workspace screenshots
+- [ ] Backend pytest API test suite
+- [ ] Production monitoring and demo reliability improvements
 
 ---
 
@@ -604,6 +734,7 @@ CollabBoard is intended to show engineering depth beyond simple CRUD apps and AI
 
 - Real-time systems
 - WebSocket architecture
+- Redis Pub/Sub event broadcasting
 - PostgreSQL schema design
 - Authentication and authorization
 - Role-based board access
@@ -612,13 +743,14 @@ CollabBoard is intended to show engineering depth beyond simple CRUD apps and AI
 - Full-stack product development
 - Dockerized local development
 - CI/CD and deployment readiness
+- Production deployment
 
 ### Resume Bullet
 
-Built and deployed CollabBoard, a full-stack real-time collaborative workspace platform using FastAPI, PostgreSQL, SQLAlchemy, Alembic, Redis Pub/Sub, WebSockets, Next.js, TypeScript, and Docker; implemented JWT authentication, protected dashboards, board/column/task CRUD, activity logs, live board presence, and a production-style PR-driven development workflow.
+Built and deployed CollabBoard, a full-stack real-time collaborative workspace platform using FastAPI, PostgreSQL, SQLAlchemy, Alembic, Redis Pub/Sub, WebSockets, Next.js, TypeScript, and Docker; implemented JWT authentication, protected dashboards, board/column/task CRUD, task comments, activity logs, drag-and-drop movement, realtime multi-tab synchronization, GitHub Actions CI, and Render/Vercel production deployment.
 
 ---
 
 ## Project Goal
 
-The goal of CollabBoard is to demonstrate that this is not just a UI clone or simple task tracker. It is a realistic collaboration platform with backend depth, realtime architecture, database design, frontend product flows, and a roadmap toward scalable multi-user synchronization.
+The goal of CollabBoard is to demonstrate that this is not just a UI clone or simple task tracker. It is a realistic collaboration platform with backend depth, realtime architecture, database design, frontend product flows, CI checks, deployment configuration, and a live production demo.
