@@ -3,6 +3,16 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def normalize_database_url(database_url: str) -> str:
+    if database_url.startswith("postgres://"):
+        return database_url.replace("postgres://", "postgresql+psycopg://", 1)
+
+    if database_url.startswith("postgresql://"):
+        return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+    return database_url
+
+
 class Settings(BaseSettings):
     app_name: str = "CollabBoard API"
     app_env: str = "development"
@@ -19,6 +29,10 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        return normalize_database_url(self.database_url)
 
     @property
     def allowed_origins(self) -> list[str]:
