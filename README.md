@@ -12,6 +12,8 @@ The project is designed to demonstrate production-style full-stack engineering w
 ![WebSockets](https://img.shields.io/badge/WebSockets-Realtime-6f42c1)
 ![Docker](https://img.shields.io/badge/Docker-Local%20Dev-2496ED)
 ![CI](https://img.shields.io/badge/GitHub%20Actions-CI-2088FF)
+![Render](https://img.shields.io/badge/Render-Backend%20Deploy-46E3B7)
+![Vercel](https://img.shields.io/badge/Vercel-Frontend%20Deploy-black)
 
 ---
 
@@ -144,8 +146,8 @@ CollabBoard provides a complete team workspace flow:
 - Git and GitHub pull request workflow
 - PR readiness script
 - GitHub Actions CI
-- Planned Render backend deployment
-- Planned Vercel frontend deployment
+- Render backend deployment configuration
+- Vercel frontend deployment configuration
 
 ---
 
@@ -316,6 +318,25 @@ Frontend updates live viewer count
 
 ---
 
+## Production Deployment
+
+Deployment documentation is available here:
+
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+
+Production deployment target:
+
+| Layer | Platform | Notes |
+|---|---|---|
+| Frontend | Vercel | Next.js app from `frontend/` |
+| Backend API | Render Web Service | FastAPI REST API and WebSocket server |
+| Database | Render PostgreSQL | Managed production PostgreSQL |
+| Realtime broker | Render Key Value | Redis-compatible pub/sub service |
+
+The backend startup script runs Alembic migrations before starting Uvicorn.
+
+---
+
 ## Local Development
 
 Start local services:
@@ -481,6 +502,7 @@ Implemented:
 - Dockerized local development
 - PR readiness script
 - GitHub Actions CI workflow
+- Production deployment configuration
 
 Not shipped yet:
 
@@ -494,7 +516,7 @@ Not shipped yet:
 Deployment status:
 
 - Local development is fully Dockerized.
-- Production backend and frontend deployment are planned next.
+- Render/Vercel config files are prepared; service creation is planned next.
 - Live demo links will be added only after deployment is complete.
 
 ---
@@ -548,8 +570,9 @@ The checklist below tracks merged project milestones. PR numbers match GitHub pu
 ### Phase 6 - Ship Readiness
 
 - [x] PR #27: GitHub Actions CI workflow
-- [ ] Production backend deployment
-- [ ] Production frontend deployment
+- [x] PR #28: Production deployment configuration
+- [ ] Create Render backend service
+- [ ] Create Vercel frontend project
 - [ ] README screenshots
 - [ ] Architecture diagram
 - [ ] Live demo link after deployment
